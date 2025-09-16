@@ -10,6 +10,12 @@ export default function PropertyImageViewerModal({
     onClose, 
     property 
 }) {
+    const handleImageError = (e) => {
+        console.log('Image load error:', e.target.src);
+        e.target.src = '/images/placeholder-image.svg';
+        e.target.onerror = null;
+    };
+
     const [currentIndex, setCurrentIndex] = useState(0);
     const images = property.images || [];
 
@@ -93,10 +99,11 @@ export default function PropertyImageViewerModal({
                     {/* Main Image */}
                     <div className="max-w-full max-h-full flex items-center justify-center">
                         <img
-                            src={`/storage/${currentImage.file_path}`}
+                            src={currentImage.url}
                             alt={currentImage.original_name}
                             className="max-w-full max-h-full object-contain rounded-lg"
                             style={{ maxHeight: '80vh' }}
+                            onError={handleImageError}
                         />
                     </div>
                 </div>
@@ -117,9 +124,10 @@ export default function PropertyImageViewerModal({
                                         }`}
                                     >
                                         <img
-                                            src={`/storage/${image.file_path}`}
+                                            src={image.url}
                                             alt={image.original_name}
                                             className="w-full h-full object-cover"
+                                            onError={handleImageError}
                                         />
                                     </button>
                                 ))}

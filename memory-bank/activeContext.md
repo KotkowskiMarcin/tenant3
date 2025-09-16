@@ -49,6 +49,45 @@
 - **Pre-wypełnione formularze** - Automatyczne wypełnianie danych płatności z alertów
 - **Naprawa błędów JavaScript** - Rozwiązanie problemów z undefined properties i null href
 - **Optymalizacja UX** - Płynne przejścia bez przeładowań strony, zamykanie modali po akcjach
+- **Moduł zarządzania najmami** - Pełna implementacja systemu zarządzania najemcami i najmami
+- **System najemców** - CRUD z polami: imię, nazwisko, email (opcjonalny), telefon, adres, PESEL, numer dowodu, inny dokument tożsamości, uwagi
+- **System najmów** - CRUD z polami: data rozpoczęcia, data zakończenia, kwota czynszu, kwota kaucji, faktura/paragon, dane do faktury, uwagi
+- **Relacje między modelami** - Tenant i Rental z relacjami do Property
+- **Zakładka Najmy w nieruchomościach** - Dodana do szczegółów nieruchomości z tabelą najmów i przyciskami akcji
+- **Modal dodawania najmu** - Dodawanie najmu z panelu nieruchomości odbywa się w modalu z domyślną datą rozpoczęcia na dzisiejszy dzień
+- **Pole rozliczania w najmach** - Zaktualizowano pole "faktura/paragon" na radio buttony z opcjami "Faktura" i "Paragon" dla określenia sposobu rozliczania najmu
+- **Naprawa błędów JavaScript** - Naprawiono błąd z `rental.isActive()` w komponentach React, dodając funkcję `isRentalActive()` w JavaScript
+- **Obsługa błędów ładowania obrazków** - Dodano obsługę błędów ładowania obrazków z placeholderem SVG dla wszystkich komponentów wyświetlających obrazy
+- **Menu nawigacyjne** - Zaktualizowane o linki do najemców i najmów
+- **Strony React** - Pełne strony CRUD dla najemców i najmów z walidacją i paginacją
+- **System załączników najmów** - Pełna implementacja z uploadem, zarządzaniem i pobieraniem plików
+- **Zakładka załączników w najmach** - Tabela z pełnym zarządzaniem (dodaj, edytuj, usuń, pobierz)
+- **Modal zarządzania załącznikami najmów** - Inteligentny modal z trybem dodawania i edycji
+- **Naprawa błędów HTTP** - Rozwiązanie problemu z metodą PATCH vs PUT w edycji załączników
+- **System zarządzania licznikami** - Pełna implementacja systemu zarządzania licznikami w nieruchomościach
+- **Tabela property_meters** - Nowa tabela z polami: name, serial_number, provider, current_reading, unit, price_per_unit
+- **Model PropertyMeter** - Model z relacjami, walidacją, metodami pomocniczymi do formatowania danych i $appends dla accessory
+- **Kontroler PropertyMeterController** - Pełny CRUD z walidacją i obsługą błędów
+- **Zakładka Liczniki** - Nowa zakładka w szczegółach nieruchomości z tabelą liczników i przyciskami akcji
+- **Przycisk "Dodaj licznik"** - Otwiera bezpośrednio modal z formularzem dodawania nowego licznika
+- **Tabela liczników** - Wyświetla nazwę, numer seryjny, dostawcę, stan, cenę za jednostkę i przyciski akcji
+- **Przyciski akcji w tabeli** - Podgląd (niebieska ikona oka), edycja (żółta ikona ołówka), usuwanie (czerwona ikona kosza)
+- **Modal podglądu licznika** - Szczegółowy podgląd danych licznika z formatowaniem i datami
+- **Modal edycji licznika** - Formularz z walidacją, obsługą różnych jednostek pomiarowych i trybem tworzenia/edycji
+- **Modal usuwania licznika** - Potwierdzenie usunięcia z podglądem danych licznika
+- **Naprawa problemów z zapisywaniem** - Dodano property_id do submitData i poprawiono przekazywanie property
+- **Usunięcie kosztu całkowitego** - Usunięto wyświetlanie kosztu całkowitego z tabeli i modalu podglądu
+- **Moduł rozliczeń miesięcznych** - Pełna implementacja systemu rozliczeń miesięcznych dla najmów
+- **Model MonthlySettlement** - Model z polami: rental_id, year, month, total_amount, status, issued_at, paid_at, components (JSON)
+- **Tabela monthly_settlements** - Nowa tabela z indeksami unikalności i wydajności
+- **Kontroler MonthlySettlementController** - Pełny CRUD z walidacją, generowaniem składników i obliczaniem kwot
+- **Zakładka Rozliczenia** - Nowa zakładka w szczegółach najmu z linkiem do zarządzania rozliczeniami
+- **Strona listy rozliczeń** - Tabela z rozwijanymi wierszami pokazującymi składniki rozliczenia
+- **Strona tworzenia rozliczenia** - Formularz z automatycznym generowaniem składników (czynsz + liczniki)
+- **Strona edycji rozliczenia** - Edycja istniejących rozliczeń z możliwością modyfikacji składników
+- **Składniki rozliczenia** - JSON z polami: name, amount, type (rent/meter/other), status, description
+- **Automatyczne obliczanie** - Zużycie i kwoty dla liczników na podstawie aktualnego i poprzedniego stanu
+- **Walidacja unikalności** - Sprawdzanie czy rozliczenie dla danego najmu, roku i miesiąca już istnieje
 
 ### 🔄 W Trakcie
 - **Dokumentacja** - Aktualizacja dokumentacji zgodnie z aktualnym stanem funkcjonalności
@@ -85,6 +124,10 @@
 - `app/Http/Controllers/PropertyEventController.php` - Zarządzanie zdarzeniami nieruchomości
 - `app/Http/Controllers/FeeTypeController.php` - Zarządzanie szablonami opłat
 - `app/Http/Controllers/PaymentController.php` - Zarządzanie płatnościami
+- `app/Http/Controllers/TenantController.php` - Zarządzanie najemcami
+- `app/Http/Controllers/RentalController.php` - Zarządzanie najmami
+- `app/Http/Controllers/RentalAttachmentController.php` - Zarządzanie załącznikami najmów
+- `app/Http/Controllers/PropertyMeterController.php` - Zarządzanie licznikami nieruchomości
 - `app/Http/Middleware/AdminMiddleware.php` - Ochrona tras admin
 - `app/Models/User.php` - Model z systemem ról
 - `app/Models/PropertyImage.php` - Model zdjęć nieruchomości
@@ -92,6 +135,10 @@
 - `app/Models/PropertyEvent.php` - Model zdarzeń nieruchomości
 - `app/Models/FeeType.php` - Model szablonów opłat
 - `app/Models/Payment.php` - Model płatności
+- `app/Models/Tenant.php` - Model najemców
+- `app/Models/Rental.php` - Model najmów
+- `app/Models/RentalAttachment.php` - Model załączników najmów
+- `app/Models/PropertyMeter.php` - Model liczników nieruchomości
 - `app/Services/FeeTypeService.php` - Logika biznesowa szablonów opłat
 - `app/Services/PaymentService.php` - Logika biznesowa płatności
 - `app/Services/PaymentScheduler.php` - Generator wymaganych płatności
@@ -116,6 +163,11 @@
 - `resources/js/Components/FeeTypesManagementModal.jsx` - Modal zarządzania szablonami opłat
 - `resources/js/Components/PaymentCreateModal.jsx` - Modal dodawania płatności
 - `resources/js/Components/PaymentEditModal.jsx` - Modal edycji płatności
+- `resources/js/Components/RentalAttachmentManagementModal.jsx` - Modal zarządzania załącznikami najmów
+- `resources/js/Components/Meters/MeterManagementModal.jsx` - Modal zarządzania licznikami
+- `resources/js/Components/Meters/MeterEditModal.jsx` - Modal edycji/tworzenia licznika
+- `resources/js/Components/Meters/MeterViewModal.jsx` - Modal podglądu licznika
+- `resources/js/Components/Meters/MeterDeleteModal.jsx` - Modal usuwania licznika
 - `resources/js/Layouts/AuthenticatedLayout.jsx` - Layout z menu admin
 
 ## Konfiguracja Środowiska
@@ -177,6 +229,19 @@
 - ✅ Pre-wypełnione formularze płatności z alertów
 - ✅ Naprawa błędów JavaScript (undefined properties, null href)
 - ✅ Optymalizacja UX (płynne przejścia, zamykanie modali)
+- ✅ System załączników najmów - Pełna implementacja z uploadem, zarządzaniem i pobieraniem plików
+- ✅ Zakładka załączników w najmach - Tabela z pełnym zarządzaniem (dodaj, edytuj, usuń, pobierz)
+- ✅ Modal zarządzania załącznikami najmów - Inteligentny modal z trybem dodawania i edycji
+- ✅ Naprawa błędów HTTP - Rozwiązanie problemu z metodą PATCH vs PUT w edycji załączników
+- ✅ System liczników nieruchomości - Pełna implementacja z CRUD, tabelą i modalami
+- ✅ Zakładka Liczniki - Nowa zakładka w szczegółach nieruchomości z tabelą i przyciskami akcji
+- ✅ Przycisk "Dodaj licznik" - Otwiera bezpośrednio modal z formularzem dodawania
+- ✅ Tabela liczników - Wyświetla dane z przyciskami podglądu, edycji i usuwania
+- ✅ Modal podglądu licznika - Szczegółowy podgląd z formatowaniem danych
+- ✅ Modal edycji licznika - Formularz z walidacją i obsługą różnych jednostek
+- ✅ Modal usuwania licznika - Potwierdzenie z podglądem danych
+- ✅ Naprawa problemów z zapisywaniem - Dodano property_id i poprawiono przekazywanie danych
+- ✅ Usunięcie kosztu całkowitego - Usunięto z tabeli i modalu podglądu
 
 ## Znane Problemy
 - Brak znanych problemów w aktualnej wersji

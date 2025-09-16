@@ -99,7 +99,7 @@ export default function Index({ properties }) {
                                                 {/* Background Image or Placeholder */}
                                                 {hasImage ? (
                                                     <img
-                                                        src={`/storage/${displayImage.file_path}`}
+                                                        src={displayImage.url}
                                                         alt={property.name}
                                                         className="w-full h-full object-cover"
                                                         onError={(e) => {

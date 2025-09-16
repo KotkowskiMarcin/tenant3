@@ -19,6 +19,12 @@ export default function PropertyImageManagementModal({
     onClose, 
     property 
 }) {
+    const handleImageError = (e) => {
+        console.log('Image load error:', e.target.src);
+        e.target.src = '/images/placeholder-image.svg';
+        e.target.onerror = null;
+    };
+
     const [showLightbox, setShowLightbox] = useState(false);
     const [selectedImage, setSelectedImage] = useState(null);
     const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -184,10 +190,11 @@ export default function PropertyImageManagementModal({
                                 {primaryImage && (
                                     <div className="relative group col-span-2 md:col-span-2">
                                         <img
-                                            src={`/storage/${primaryImage.file_path}`}
+                                            src={primaryImage.url}
                                             alt={primaryImage.original_name}
                                             className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                                             onClick={() => openLightbox(primaryImage, 0)}
+                                            onError={handleImageError}
                                         />
                                         <div className="absolute top-2 left-2 bg-yellow-500 text-white px-2 py-1 rounded text-xs font-medium">
                                             <StarIconSolid className="h-3 w-3 inline mr-1" />
@@ -209,10 +216,11 @@ export default function PropertyImageManagementModal({
                                 {additionalImages.map((image, index) => (
                                     <div key={image.id} className="relative group">
                                         <img
-                                            src={`/storage/${image.file_path}`}
+                                            src={image.url}
                                             alt={image.original_name}
                                             className="w-full h-32 object-cover rounded cursor-pointer hover:opacity-90 transition-opacity"
                                             onClick={() => openLightbox(image, index + 1)}
+                                            onError={handleImageError}
                                         />
                                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
                                             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
@@ -258,9 +266,10 @@ export default function PropertyImageManagementModal({
                         </button>
                         
                         <img
-                            src={`/storage/${selectedImage.file_path}`}
+                            src={selectedImage.url}
                             alt={selectedImage.original_name}
                             className="max-w-full max-h-full object-contain"
+                            onError={handleImageError}
                         />
                         
                         {property.images.length > 1 && (

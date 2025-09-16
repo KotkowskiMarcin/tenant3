@@ -8,6 +8,11 @@ use App\Http\Controllers\PropertyAttachmentController;
 use App\Http\Controllers\PropertyEventController;
 use App\Http\Controllers\FeeTypeController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\TenantController;
+use App\Http\Controllers\RentalController;
+use App\Http\Controllers\RentalAttachmentController;
+use App\Http\Controllers\PropertyMeterController;
+use App\Http\Controllers\MonthlySettlementController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -78,6 +83,40 @@ Route::middleware('auth')->group(function () {
     Route::get('properties/{property}/payments', [PaymentController::class, 'indexForProperty'])->name('properties.payments.index');
     Route::get('properties/{property}/payments/create', [PaymentController::class, 'createForProperty'])->name('properties.payments.create');
     Route::post('properties/{property}/payments', [PaymentController::class, 'storeForProperty'])->name('properties.payments.store');
+    
+    // Trasy zarządzania najemcami
+    Route::resource('tenants', TenantController::class);
+    
+    // Trasy zarządzania najmami
+    Route::resource('rentals', RentalController::class);
+    
+    // Trasy załączników najmów
+    Route::post('rentals/{rental}/attachments', [RentalAttachmentController::class, 'store'])->name('rentals.attachments.store');
+    Route::put('rentals/{rental}/attachments/{attachment}', [RentalAttachmentController::class, 'update'])->name('rentals.attachments.update');
+    Route::get('rentals/{rental}/attachments/{attachment}/download', [RentalAttachmentController::class, 'download'])->name('rentals.attachments.download');
+    Route::delete('rentals/{rental}/attachments/{attachment}', [RentalAttachmentController::class, 'destroy'])->name('rentals.attachments.destroy');
+    
+    // Trasy zarządzania najemcami w ramach najmu
+    Route::post('rentals/{rental}/tenants', [RentalController::class, 'addTenant'])->name('rentals.tenants.add');
+    Route::delete('rentals/{rental}/tenants/{tenant}', [RentalController::class, 'removeTenant'])->name('rentals.tenants.remove');
+    
+    // Trasy rozliczeń miesięcznych
+    Route::resource('rentals.monthly-settlements', MonthlySettlementController::class)->except(['show']);
+    Route::get('rentals/{rental}/monthly-settlements/{monthlySettlement}', [MonthlySettlementController::class, 'show'])->name('rentals.monthly-settlements.show');
+    Route::post('rentals/{rental}/monthly-settlements/{monthlySettlement}/mark-paid', [MonthlySettlementController::class, 'markAsPaid'])->name('rentals.monthly-settlements.mark-paid');
+    Route::get('rentals/{rental}/monthly-settlements/meter-data', [MonthlySettlementController::class, 'getMeterData'])->name('rentals.monthly-settlements.meter-data');
+    Route::get('rentals/{rental}/monthly-settlements/generate-components', [MonthlySettlementController::class, 'generateDefaultComponents'])->name('rentals.monthly-settlements.generate-components');
+    
+    // Trasy zarządzania licznikami nieruchomości
+    Route::resource('property-meters', PropertyMeterController::class);
+    Route::get('properties/{property}/meters', [PropertyMeterController::class, 'index'])->name('properties.meters.index');
+    Route::post('properties/{property}/meters', [PropertyMeterController::class, 'store'])->name('properties.meters.store');
+    Route::patch('rentals/{rental}/tenants/{tenant}/primary', [RentalController::class, 'setPrimaryTenant'])->name('rentals.tenants.set-primary');
+    
+    // Trasy najmów powiązanych z nieruchomością
+    Route::get('properties/{property}/rentals', [RentalController::class, 'indexForProperty'])->name('properties.rentals.index');
+    Route::get('properties/{property}/rentals/create', [RentalController::class, 'createForProperty'])->name('properties.rentals.create');
+    Route::post('properties/{property}/rentals', [RentalController::class, 'storeForProperty'])->name('properties.rentals.store');
 });
 
 require __DIR__.'/auth.php';

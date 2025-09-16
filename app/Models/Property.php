@@ -97,6 +97,33 @@ class Property extends Model
     }
 
     /**
+     * Get the rentals for the property.
+     */
+    public function rentals(): HasMany
+    {
+        return $this->hasMany(Rental::class)->orderBy('start_date', 'desc');
+    }
+
+    /**
+     * Get the active rentals for the property.
+     */
+    public function activeRentals(): HasMany
+    {
+        return $this->hasMany(Rental::class)->where(function ($q) {
+            $q->whereNull('end_date')
+              ->orWhere('end_date', '>', now());
+        })->orderBy('start_date', 'desc');
+    }
+
+    /**
+     * Get the meters for the property.
+     */
+    public function meters(): HasMany
+    {
+        return $this->hasMany(PropertyMeter::class)->orderBy('name');
+    }
+
+    /**
      * Get the status options.
      */
     public static function getStatusOptions(): array
