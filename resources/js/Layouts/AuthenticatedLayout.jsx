@@ -43,6 +43,18 @@ export default function AuthenticatedLayout({ header, children }) {
                                     Nieruchomości
                                 </NavLink>
                                 <NavLink
+                                    href={route('tenants.index')}
+                                    active={route().current('tenants.*')}
+                                >
+                                    Najemcy
+                                </NavLink>
+                                <NavLink
+                                    href={route('rentals.index')}
+                                    active={route().current('rentals.*')}
+                                >
+                                    Najmy
+                                </NavLink>
+                                <NavLink
                                     href={route('payments.index')}
                                     active={route().current('payments.*')}
                                 >
@@ -171,6 +183,18 @@ export default function AuthenticatedLayout({ header, children }) {
                             active={route().current('properties.*')}
                         >
                             Nieruchomości
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            href={route('tenants.index')}
+                            active={route().current('tenants.*')}
+                        >
+                            Najemcy
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            href={route('rentals.index')}
+                            active={route().current('rentals.*')}
+                        >
+                            Najmy
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
                             href={route('payments.index')}

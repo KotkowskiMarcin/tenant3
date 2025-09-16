@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class PropertyImage extends Model
 {
@@ -19,6 +20,10 @@ class PropertyImage extends Model
     protected $casts = [
         'is_primary' => 'boolean',
         'file_size' => 'integer',
+    ];
+
+    protected $appends = [
+        'url',
     ];
 
     /**
@@ -43,5 +48,13 @@ class PropertyImage extends Model
     public function scopeAdditional($query)
     {
         return $query->where('is_primary', false);
+    }
+
+    /**
+     * Get the full URL for the image
+     */
+    public function getUrlAttribute(): string
+    {
+        return Storage::url($this->file_path);
     }
 }

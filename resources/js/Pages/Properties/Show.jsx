@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PropertyImageManagementModal from '@/Components/PropertyImageManagementModal';
 import PropertyImageViewerModal from '@/Components/PropertyImageViewerModal';
@@ -12,7 +12,12 @@ import PropertyEventManagementModal from '@/Components/PropertyEventManagementMo
 import FeeTypesManagementModal from '@/Components/FeeTypesManagementModal';
 import PaymentCreateModal from '@/Components/PaymentCreateModal';
 import PaymentEditModal from '@/Components/PaymentEditModal';
+import RentalCreateModal from '@/Components/RentalCreateModal';
 import ConfirmModal from '@/Components/ConfirmModal';
+import MeterManagementModal from '@/Components/Meters/MeterManagementModal';
+import MeterViewModal from '@/Components/Meters/MeterViewModal';
+import MeterEditModal from '@/Components/Meters/MeterEditModal';
+import MeterDeleteModal from '@/Components/Meters/MeterDeleteModal';
 import { useState, useEffect } from 'react';
 import { 
     PencilIcon, 
@@ -38,11 +43,82 @@ import {
     ChevronDownIcon,
     MagnifyingGlassIcon,
     PencilSquareIcon,
-    ExclamationTriangleIcon
+    ExclamationTriangleIcon,
+    EyeIcon,
+    BoltIcon
 } from '@heroicons/react/24/outline';
 
-export default function Show({ property, feeTypes, requiredPayments, paymentStatistics, recentPayments, monthlyOverdueNotifications, currentYear, currentMonth, frequencyTypeOptions, paymentMethodOptions, statusOptions }) {
+function Show({ property, feeTypes, requiredPayments, paymentStatistics, recentPayments, monthlyOverdueNotifications, currentYear, currentMonth, frequencyTypeOptions, paymentMethodOptions, statusOptions, allTenants, billingTypeOptions }) {
+    // Dodaj try-catch na najwyższym poziomie komponentu
+    try {
+    
+    // Zabezpieczenie dla usePage
+    let pageProps = {};
+    let flash = null;
+    
+    try {
+        pageProps = usePage()?.props || {};
+        flash = pageProps.flash || null;
+    } catch (error) {
+        console.error('Error accessing usePage:', error);
+        pageProps = {};
+        flash = null;
+    }
+    
+    // Sprawdź czy property istnieje
+    if (!property) {
+        return (
+            <AuthenticatedLayout>
+                <Head title="Nieruchomość nie znaleziona" />
+                <div className="py-12">
+                    <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                            <div className="p-6 text-gray-900">
+                                <h1 className="text-2xl font-bold text-red-600">Nieruchomość nie została znaleziona</h1>
+                                <p className="mt-2 text-gray-600">Sprawdź czy nieruchomość istnieje i czy masz do niej dostęp.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </AuthenticatedLayout>
+        );
+    }
+
+    // Loading state - jeśli dane nie są jeszcze załadowane
+    if (!property || !property.id) {
+        return (
+            <AuthenticatedLayout>
+                <Head title="Ładowanie..." />
+                <div className="py-12">
+                    <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                            <div className="p-6 text-gray-900">
+                                <div className="flex items-center justify-center">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                    <span className="ml-2 text-gray-600">Ładowanie...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </AuthenticatedLayout>
+        );
+    }
+    
+    // Zabezpieczenia dla useState
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    
+    const isRentalActive = (rental) => {
+        if (!rental.end_date) return true;
+        return new Date(rental.end_date) > new Date();
+    };
+
+    const handleImageError = (e) => {
+        console.log('Image load error:', e.target.src);
+        // Zastąp obrazek placeholderem
+        e.target.src = '/images/placeholder-image.svg';
+        e.target.onerror = null; // Zapobiegaj nieskończonej pętli
+    };
     const [showImageModal, setShowImageModal] = useState(false);
     const [showImageViewerModal, setShowImageViewerModal] = useState(false);
     const [showAttachmentModal, setShowAttachmentModal] = useState(false);
@@ -56,6 +132,15 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
     const [showPaymentEditModal, setShowPaymentEditModal] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState(null);
     const [prefilledPaymentData, setPrefilledPaymentData] = useState(null);
+    const [showRentalCreateModal, setShowRentalCreateModal] = useState(false);
+    const [showMeterModal, setShowMeterModal] = useState(false);
+    const [showMeterViewModal, setShowMeterViewModal] = useState(false);
+    const [showMeterEditModal, setShowMeterEditModal] = useState(false);
+    const [showMeterCreateModal, setShowMeterCreateModal] = useState(false);
+    const [showMeterDeleteModal, setShowMeterDeleteModal] = useState(false);
+    const [viewingMeter, setViewingMeter] = useState(null);
+    const [editingMeter, setEditingMeter] = useState(null);
+    const [deletingMeter, setDeletingMeter] = useState(null);
     const [activeTab, setActiveTab] = useState('basic');
     
     // Filtry płatności - domyślnie ustawione na aktualny miesiąc
@@ -82,7 +167,28 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
 
-    const primaryImage = property.images?.find(img => img.is_primary);
+    const primaryImage = property?.images && Array.isArray(property.images) ? property.images.find(img => img && img.is_primary) : null;
+    
+    // Zabezpieczenia dla property
+    const safeProperty = property && typeof property === 'object' ? property : {};
+    const safePropertyImages = safeProperty?.images && Array.isArray(safeProperty.images) ? safeProperty.images : [];
+    const safePropertyRentals = safeProperty?.rentals && Array.isArray(safeProperty.rentals) ? safeProperty.rentals : [];
+    const safePropertyEvents = safeProperty?.events && Array.isArray(safeProperty.events) ? safeProperty.events : [];
+    const safePropertyAttachments = safeProperty?.attachments && Array.isArray(safeProperty.attachments) ? safeProperty.attachments : [];
+    
+    // Zabezpieczenia dla danych
+    const safeFeeTypes = Array.isArray(feeTypes) ? feeTypes : [];
+    const safeRequiredPayments = Array.isArray(requiredPayments) ? requiredPayments : [];
+    const safePaymentStatistics = paymentStatistics && typeof paymentStatistics === 'object' ? paymentStatistics : {};
+    const safeRecentPayments = Array.isArray(recentPayments) ? recentPayments : [];
+    const safeMonthlyOverdueNotifications = Array.isArray(monthlyOverdueNotifications) ? monthlyOverdueNotifications : [];
+    const safeAllTenants = Array.isArray(allTenants) ? allTenants : [];
+    const safeBillingTypeOptions = Array.isArray(billingTypeOptions) ? billingTypeOptions : [];
+    const safeCurrentYear = typeof currentYear === 'number' ? currentYear : new Date().getFullYear();
+    const safeCurrentMonth = typeof currentMonth === 'number' ? currentMonth : new Date().getMonth() + 1;
+    const safeFrequencyTypeOptions = Array.isArray(frequencyTypeOptions) ? frequencyTypeOptions : [];
+    const safePaymentMethodOptions = Array.isArray(paymentMethodOptions) ? paymentMethodOptions : [];
+    const safeStatusOptions = Array.isArray(statusOptions) ? statusOptions : [];
 
     const handleDeleteClick = () => {
         setShowDeleteModal(true);
@@ -116,7 +222,7 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
 
     // Automatyczne filtrowanie przy zmianie filtrów
     useEffect(() => {
-        let filtered = recentPayments || [];
+        let filtered = safeRecentPayments || [];
         
         // Filtruj po typie opłaty
         if (paymentFilters.feeTypeId) {
@@ -138,7 +244,7 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
         
         setFilteredPayments(filtered);
         setCurrentPage(1); // Resetuj stronę przy zmianie filtrów
-    }, [paymentFilters, recentPayments]);
+    }, [paymentFilters, safeRecentPayments]);
 
     const clearFilters = () => {
         setPaymentFilters({
@@ -297,6 +403,8 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
         { id: 'basic', name: 'Podstawowe', icon: InformationCircleIcon },
         { id: 'financial', name: 'Finansowy', icon: BanknotesIcon },
         { id: 'payments', name: 'Płatności', icon: ChartBarIcon },
+        { id: 'rentals', name: 'Najmy', icon: HomeIcon },
+        { id: 'meters', name: 'Liczniki', icon: BoltIcon },
         { id: 'events', name: 'Zdarzenia', icon: CalendarDaysIcon },
         { id: 'attachments', name: 'Załączniki', icon: ClipboardDocumentListIcon }
     ];
@@ -304,6 +412,13 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
     return (
         <AuthenticatedLayout>
             <Head title={`Nieruchomość - ${property.name}`} />
+            
+            {/* Wiadomości o sukcesie */}
+            {flash?.success && (
+                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 mx-6 mt-6">
+                    {flash?.success}
+                </div>
+            )}
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -481,7 +596,7 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                                 <div className="flex justify-between items-center mb-6">
                                                     <h2 className="text-xl font-semibold text-gray-900 flex items-center">
                                                         <PhotoIcon className="w-5 h-5 mr-2" />
-                                                        Galeria zdjęć ({property.images?.length || 0})
+                                                        Galeria zdjęć ({safePropertyImages?.length || 0})
                                                     </h2>
                                                     <button
                                                         onClick={() => setShowImageModal(true)}
@@ -491,15 +606,16 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                                     </button>
                                                 </div>
 
-                                                {property.images && property.images.length > 0 ? (
+                                                {safePropertyImages && safePropertyImages.length > 0 ? (
                                                     <div className="space-y-4">
                                                         {/* Zdjęcie wiodące */}
                                                         <div className="relative group">
                                                             <img
-                                                                src={`/storage/${primaryImage?.file_path || property.images[0].file_path}`}
-                                                                alt={primaryImage?.original_name || property.images[0].original_name}
+                                                                src={primaryImage?.url || safePropertyImages?.[0]?.url}
+                                                                alt={primaryImage?.original_name || safePropertyImages?.[0]?.original_name}
                                                                 className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                                                                 onClick={() => setShowImageModal(true)}
+                                                                onError={handleImageError}
                                                             />
                                                             {primaryImage && (
                                                                 <div className="absolute top-2 left-2 bg-yellow-500 text-white px-2 py-1 rounded text-xs font-medium">
@@ -509,25 +625,26 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                                         </div>
 
                                                         {/* Trzy dodatkowe zdjęcia */}
-                                                        {property.images.length > 1 && (
+                                                        {safePropertyImages?.length > 1 && (
                                                             <div className="grid grid-cols-3 gap-2">
-                                                                {property.images
-                                                                    .filter(img => !img.is_primary)
-                                                                    .slice(0, 3)
+                                                                {safePropertyImages
+                                                                    ?.filter(img => !img.is_primary)
+                                                                    ?.slice(0, 3)
                                                                     .map((image, index) => (
                                                                         <div key={image.id} className="relative group">
                                                                             <img
-                                                                                src={`/storage/${image.file_path}`}
+                                                                                src={image.url}
                                                                                 alt={image.original_name}
                                                                                 className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-90 transition-opacity"
                                                                                 onClick={() => setShowImageModal(true)}
+                                                                                onError={handleImageError}
                                                                             />
                                                                         </div>
                                                                     ))}
                                                                 
                                                                 {/* Placeholder dla brakujących zdjęć */}
-                                                                {property.images.filter(img => !img.is_primary).length < 3 && 
-                                                                    Array.from({ length: 3 - property.images.filter(img => !img.is_primary).length }).map((_, index) => (
+                                                                {safePropertyImages?.filter(img => !img.is_primary)?.length < 3 && 
+                                                                    Array.from({ length: 3 - (safePropertyImages?.filter(img => !img.is_primary)?.length || 0) }).map((_, index) => (
                                                                         <div key={`placeholder-${index}`} className="w-full h-20 bg-gray-100 rounded flex items-center justify-center">
                                                                             <PhotoIcon className="h-6 w-6 text-gray-400" />
                                                                         </div>
@@ -537,14 +654,14 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                                         )}
 
                                                         {/* Przycisk "Zobacz wszystkie" */}
-                                                        {property.images.length > 4 && (
+                                                        {safePropertyImages?.length > 4 && (
                                                             <div className="text-center">
                                                                 <button
                                                                     onClick={() => setShowImageViewerModal(true)}
                                                                     className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center justify-center mx-auto"
                                                                 >
                                                                     <PhotoIcon className="h-4 w-4 mr-1" />
-                                                                    Zobacz wszystkie zdjęcia ({property.images.length})
+                                                                    Zobacz wszystkie zdjęcia ({safePropertyImages?.length})
                                                                 </button>
                                                             </div>
                                                         )}
@@ -624,9 +741,9 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                                     <ChartBarIcon className="h-8 w-8 text-green-600" />
                                                 </div>
                                                 <div className="ml-4">
-                                                    <p className="text-sm font-medium text-gray-500">Suma w {currentYear}</p>
+                                                    <p className="text-sm font-medium text-gray-500">Suma w {safeCurrentYear}</p>
                                                     <p className="text-2xl font-semibold text-gray-900">
-                                                        {paymentStatistics?.total_amount?.toLocaleString('pl-PL', {
+                                                        {safePaymentStatistics?.total_amount?.toLocaleString('pl-PL', {
                                                             style: 'currency',
                                                             currency: 'PLN'
                                                         }) || '0,00 zł'}
@@ -643,7 +760,7 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                                 <div className="ml-4">
                                                     <p className="text-sm font-medium text-gray-500">Liczba transakcji</p>
                                                     <p className="text-2xl font-semibold text-gray-900">
-                                                        {paymentStatistics?.total_count || 0}
+                                                        {safePaymentStatistics?.total_count || 0}
                                                     </p>
                                                 </div>
                                             </div>
@@ -657,7 +774,7 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                                 <div className="ml-4">
                                                     <p className="text-sm font-medium text-gray-500">Średnia kwota</p>
                                                     <p className="text-2xl font-semibold text-gray-900">
-                                                        {paymentStatistics?.average_amount?.toLocaleString('pl-PL', {
+                                                        {safePaymentStatistics?.average_amount?.toLocaleString('pl-PL', {
                                                             style: 'currency',
                                                             currency: 'PLN'
                                                         }) || '0,00 zł'}
@@ -669,12 +786,12 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                         <div className="bg-white p-4 rounded-lg border">
                                             <div className="flex items-center">
                                                 <div className="flex-shrink-0">
-                                                    <ChartBarIcon className={`h-8 w-8 ${(paymentStatistics?.year_over_year_change || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+                                                    <ChartBarIcon className={`h-8 w-8 ${(safePaymentStatistics?.year_over_year_change || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`} />
                                                 </div>
                                                 <div className="ml-4">
                                                     <p className="text-sm font-medium text-gray-500">Zmiana YoY</p>
-                                                    <p className={`text-2xl font-semibold ${(paymentStatistics?.year_over_year_change || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                        {(paymentStatistics?.year_over_year_change || 0) >= 0 ? '+' : ''}{paymentStatistics?.year_over_year_change || 0}%
+                                                    <p className={`text-2xl font-semibold ${(safePaymentStatistics?.year_over_year_change || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                        {(safePaymentStatistics?.year_over_year_change || 0) >= 0 ? '+' : ''}{safePaymentStatistics?.year_over_year_change || 0}%
                                                     </p>
                                                 </div>
                                             </div>
@@ -682,13 +799,13 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                     </div>
 
                                     {/* Wymagane płatności na bieżący miesiąc */}
-                                    {requiredPayments && requiredPayments.length > 0 && (
+                                    {safeRequiredPayments && safeRequiredPayments.length > 0 && (
                                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                                             <h3 className="text-lg font-semibold text-yellow-800 mb-3">
-                                                Wymagane płatności - {new Date(currentYear, currentMonth - 1).toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' })}
+                                                Wymagane płatności - {new Date(safeCurrentYear, safeCurrentMonth - 1).toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' })}
                                             </h3>
                                             <div className="space-y-2">
-                                                {requiredPayments.map((payment, index) => (
+                                                {safeRequiredPayments.map((payment, index) => (
                                                     <div key={index} className="flex justify-between items-center bg-white p-3 rounded border">
                                                         <div>
                                                             <p className="font-medium text-gray-900">{payment.name}</p>
@@ -726,11 +843,11 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                     )}
 
                                     {/* Ostatnie płatności */}
-                                    {recentPayments && recentPayments.length > 0 && (
+                                    {safeRecentPayments && safeRecentPayments.length > 0 && (
                                         <div>
                                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Ostatnie płatności</h3>
                                             <div className="space-y-2">
-                                                {recentPayments.map((payment) => (
+                                                {safeRecentPayments.map((payment) => (
                                                     <div key={payment.id} className="flex justify-between items-center bg-white p-3 rounded border">
                                                         <div>
                                                             <p className="font-medium text-gray-900">
@@ -780,7 +897,7 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                     <div className="flex justify-between items-center mb-6">
                                         <h2 className="text-xl font-semibold text-gray-900 flex items-center">
                                             <CalendarDaysIcon className="w-5 h-5 mr-2" />
-                                            Zdarzenia ({property.events?.length || 0})
+                                            Zdarzenia ({safePropertyEvents?.length || 0})
                                         </h2>
                                         <button
                                             onClick={() => setShowEventModal(true)}
@@ -791,8 +908,8 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                         </button>
                                     </div>
                                     
-                                    {property.events && property.events.length > 0 ? (
-                                        <PropertyEventTimeline events={property.events} propertyId={property.id} property={property} />
+                                    {safePropertyEvents && safePropertyEvents.length > 0 ? (
+                                        <PropertyEventTimeline events={safePropertyEvents} propertyId={safeProperty?.id} property={safeProperty} />
                                     ) : (
                                         <div className="text-center py-12 bg-gray-50 rounded-lg">
                                             <CalendarDaysIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -833,7 +950,7 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                     </div>
 
                                     {/* Powiadomienia o nieopłaconych comiesięcznych opłatach */}
-                                    {monthlyOverdueNotifications && monthlyOverdueNotifications.length > 0 && (
+                                    {safeMonthlyOverdueNotifications && safeMonthlyOverdueNotifications.length > 0 && (
                                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                                             <div className="flex">
                                                 <div className="flex-shrink-0">
@@ -848,7 +965,7 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                                             Następujące comiesięczne opłaty nie zostały jeszcze uiszczone w bieżącym miesiącu:
                                                         </p>
                                                         <ul className="space-y-3">
-                                                            {monthlyOverdueNotifications.map((notification) => (
+                                                            {safeMonthlyOverdueNotifications.map((notification) => (
                                                                 <li key={notification.fee_type_id} className="flex items-center justify-between bg-yellow-100 rounded-lg p-3">
                                                                     <div className="flex-1">
                                                                         <div className="flex items-center">
@@ -897,7 +1014,7 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                                     className="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                                 >
                                                     <option value="">Wszystkie typy</option>
-                                                    {feeTypes && feeTypes.map((feeType) => (
+                                                    {safeFeeTypes && safeFeeTypes.map((feeType) => (
                                                         <option key={feeType.id} value={feeType.id}>
                                                             {feeType.name}
                                                         </option>
@@ -1246,10 +1363,270 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                                 </div>
                             )}
 
+                            {activeTab === 'rentals' && (
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-lg font-medium text-gray-900">Najmy</h3>
+                                        <button
+                                            onClick={() => setShowRentalCreateModal(true)}
+                                            className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                        >
+                                            <PlusIcon className="w-4 h-4 mr-2" />
+                                            Dodaj najem
+                                        </button>
+                                    </div>
+                                    
+                                    {safePropertyRentals && safePropertyRentals.length > 0 ? (
+                                        <div className="overflow-x-auto">
+                                            <table className="min-w-full divide-y divide-gray-200">
+                                                <thead className="bg-gray-50">
+                                                    <tr>
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Najemca
+                                                        </th>
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Data rozpoczęcia
+                                                        </th>
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Data zakończenia
+                                                        </th>
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Kwota czynszu
+                                                        </th>
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Rozliczenie
+                                                        </th>
+                                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Status
+                                                        </th>
+                                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Akcje
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    {safePropertyRentals?.map((rental) => (
+                                                        <tr key={rental.id} className="hover:bg-gray-50">
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <Link
+                                                                    href={route('tenants.show', rental.tenant.id)}
+                                                                    className="text-sm font-medium text-blue-600 hover:text-blue-900"
+                                                                >
+                                                                    {rental.tenant.first_name} {rental.tenant.last_name}
+                                                                </Link>
+                                                                {rental.tenant.email && (
+                                                                    <p className="text-sm text-gray-500">{rental.tenant.email}</p>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                {new Date(rental.start_date).toLocaleDateString('pl-PL')}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                {rental.end_date ? new Date(rental.end_date).toLocaleDateString('pl-PL') : 'Bezterminowy'}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                {new Intl.NumberFormat('pl-PL', {
+                                                                    style: 'currency',
+                                                                    currency: 'PLN'
+                                                                }).format(rental.rent_amount)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                {rental.billing_type ? (
+                                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                                                        rental.billing_type === 'invoice' 
+                                                                            ? 'bg-blue-100 text-blue-800' 
+                                                                            : 'bg-green-100 text-green-800'
+                                                                    }`}>
+                                                                        {rental.billing_type === 'invoice' ? 'Faktura' : 'Paragon'}
+                                                                    </span>
+                                                                ) : '-'}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                                                    isRentalActive(rental) 
+                                                                        ? 'bg-green-100 text-green-800' 
+                                                                        : 'bg-red-100 text-red-800'
+                                                                }`}>
+                                                                    {isRentalActive(rental) ? 'Aktywny' : 'Zakończony'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                                <div className="flex justify-end space-x-2">
+                                                                    <Link
+                                                                        href={route('rentals.show', rental.id)}
+                                                                        className="text-blue-600 hover:text-blue-900"
+                                                                        title="Zobacz szczegóły"
+                                                                    >
+                                                                        <EyeIcon className="w-4 h-4" />
+                                                                    </Link>
+                                                                    <Link
+                                                                        href={route('rentals.edit', rental.id)}
+                                                                        className="text-indigo-600 hover:text-indigo-900"
+                                                                        title="Edytuj"
+                                                                    >
+                                                                        <PencilIcon className="w-4 h-4" />
+                                                                    </Link>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-12">
+                                            <HomeIcon className="mx-auto h-12 w-12 text-gray-400" />
+                                            <h3 className="mt-2 text-sm font-medium text-gray-900">Brak najmów</h3>
+                                            <p className="mt-1 text-sm text-gray-500">Dodaj pierwszy najem dla tej nieruchomości.</p>
+                                            <div className="mt-6">
+                                                <button
+                                                    onClick={() => setShowRentalCreateModal(true)}
+                                                    className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                                >
+                                                    <PlusIcon className="w-4 h-4 mr-2" />
+                                                    Dodaj najem
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'meters' && (
+                                <div className="space-y-6">
+                                    <div className="bg-white shadow rounded-lg">
+                                        <div className="px-6 py-4 border-b border-gray-200">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center">
+                                                    <BoltIcon className="h-6 w-6 text-blue-600 mr-3" />
+                                                    <h3 className="text-lg font-medium text-gray-900">
+                                                        Liczniki ({safeProperty?.meters?.length || 0})
+                                                    </h3>
+                                                </div>
+                                                <button
+                                                    onClick={() => setShowMeterCreateModal(true)}
+                                                    className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                                >
+                                                    <PlusIcon className="h-4 w-4 mr-2" />
+                                                    Dodaj licznik
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="p-6">
+                                            {safeProperty?.meters && safeProperty.meters.length > 0 ? (
+                                                <div className="overflow-x-auto">
+                                                    <table className="min-w-full divide-y divide-gray-200">
+                                                        <thead className="bg-gray-50">
+                                                            <tr>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Nazwa
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Numer seryjny
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Dostawca
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Stan
+                                                                </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Cena/jednostka
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Akcje
+                                            </th>
+                                        </tr>
+                                                        </thead>
+                                                        <tbody className="bg-white divide-y divide-gray-200">
+                                                            {safeProperty.meters.map((meter) => (
+                                                                <tr key={meter.id} className="hover:bg-gray-50">
+                                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                                        <div className="flex items-center">
+                                                                            <BoltIcon className="h-5 w-5 text-blue-500 mr-2" />
+                                                                            <div className="text-sm font-medium text-gray-900">
+                                                                                {meter.name}
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                        {meter.serial_number}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                        {meter.provider || '-'}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                        {meter.formatted_reading}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                        {meter.formatted_price_per_unit}
+                                                                    </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <div className="flex space-x-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                setViewingMeter(meter);
+                                                                setShowMeterViewModal(true);
+                                                            }}
+                                                            className="text-blue-600 hover:text-blue-900"
+                                                            title="Podgląd"
+                                                        >
+                                                            <EyeIcon className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingMeter(meter);
+                                                                setShowMeterEditModal(true);
+                                                            }}
+                                                            className="text-yellow-600 hover:text-yellow-900"
+                                                            title="Edytuj"
+                                                        >
+                                                            <PencilIcon className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setDeletingMeter(meter);
+                                                                setShowMeterDeleteModal(true);
+                                                            }}
+                                                            className="text-red-600 hover:text-red-900"
+                                                            title="Usuń"
+                                                        >
+                                                            <TrashIcon className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-12">
+                                                    <BoltIcon className="mx-auto h-12 w-12 text-gray-400" />
+                                                    <h3 className="mt-2 text-sm font-medium text-gray-900">Brak liczników</h3>
+                                                    <p className="mt-1 text-sm text-gray-500">
+                                                        Zacznij od dodania pierwszego licznika.
+                                                    </p>
+                                                    <div className="mt-6">
+                                                        <button
+                                                            onClick={() => setShowMeterCreateModal(true)}
+                                                            className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                                        >
+                                                            <PlusIcon className="h-4 w-4 mr-2" />
+                                                            Dodaj pierwszy licznik
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {activeTab === 'attachments' && (
                                 <div className="space-y-6">
                                     <PropertyAttachmentCard 
-                                        attachments={property.attachments || []} 
+                                        attachments={safePropertyAttachments} 
                                         onEdit={handleAttachmentEdit}
                                         onDelete={handleAttachmentDelete}
                                         onDownload={handleAttachmentDownload}
@@ -1266,21 +1643,21 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
             <PropertyImageManagementModal
                 show={showImageModal}
                 onClose={() => setShowImageModal(false)}
-                property={property}
+                property={safeProperty}
             />
 
             {/* Modal przeglądania zdjęć */}
             <PropertyImageViewerModal
                 show={showImageViewerModal}
                 onClose={() => setShowImageViewerModal(false)}
-                property={property}
+                property={safeProperty}
             />
 
             {/* Modal zarządzania załącznikami */}
             <PropertyAttachmentManagementModal
                 isOpen={showAttachmentModal}
                 onClose={() => setShowAttachmentModal(false)}
-                property={property}
+                property={safeProperty}
                 attachments={property.attachments || []}
             />
 
@@ -1308,15 +1685,15 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
             <PropertyAttachmentAddModal
                 isOpen={showAttachmentAddModal}
                 onClose={() => setShowAttachmentAddModal(false)}
-                property={property}
+                property={safeProperty}
             />
 
             {/* Modal zarządzania zdarzeniami */}
             <PropertyEventManagementModal
                 isOpen={showEventModal}
                 onClose={() => setShowEventModal(false)}
-                propertyId={property.id}
-                events={property.events || []}
+                propertyId={safeProperty?.id}
+                events={safePropertyEvents}
                 openForm={true}
             />
 
@@ -1332,13 +1709,82 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                 type="danger"
             />
 
+            {/* Modal dodawania najmu */}
+            <RentalCreateModal
+                show={showRentalCreateModal}
+                onClose={() => setShowRentalCreateModal(false)}
+                property={safeProperty}
+                tenants={safeAllTenants}
+                billingTypeOptions={safeBillingTypeOptions}
+            />
+
+            {/* Modal zarządzania licznikami */}
+            <MeterManagementModal
+                property={safeProperty}
+                isOpen={showMeterModal}
+                onClose={() => setShowMeterModal(false)}
+            />
+
+            {/* Modal podglądu licznika */}
+            <MeterViewModal
+                meter={viewingMeter}
+                isOpen={showMeterViewModal}
+                onClose={() => {
+                    setShowMeterViewModal(false);
+                    setViewingMeter(null);
+                }}
+            />
+
+            {/* Modal edycji licznika */}
+            <MeterEditModal
+                meter={editingMeter}
+                isOpen={showMeterEditModal}
+                onClose={() => {
+                    setShowMeterEditModal(false);
+                    setEditingMeter(null);
+                }}
+                isCreating={false}
+                property={safeProperty}
+            />
+
+            {/* Modal tworzenia licznika */}
+            <MeterEditModal
+                meter={null}
+                isOpen={showMeterCreateModal}
+                onClose={() => {
+                    setShowMeterCreateModal(false);
+                }}
+                isCreating={true}
+                property={property}
+            />
+
+            {/* Modal usuwania licznika */}
+            <MeterDeleteModal
+                meter={deletingMeter}
+                isOpen={showMeterDeleteModal}
+                onClose={() => {
+                    setShowMeterDeleteModal(false);
+                    setDeletingMeter(null);
+                }}
+                onConfirm={() => {
+                    if (deletingMeter) {
+                        router.delete(route('property-meters.destroy', deletingMeter.id), {
+                            onSuccess: () => {
+                                setShowMeterDeleteModal(false);
+                                setDeletingMeter(null);
+                            }
+                        });
+                    }
+                }}
+            />
+
             {/* Modal zarządzania szablonami opłat */}
             <FeeTypesManagementModal
                 isOpen={showFeeTypesModal}
                 onClose={() => setShowFeeTypesModal(false)}
-                property={property}
-                feeTypes={feeTypes || []}
-                frequencyTypeOptions={frequencyTypeOptions || []}
+                property={safeProperty}
+                feeTypes={safeFeeTypes}
+                frequencyTypeOptions={safeFrequencyTypeOptions}
                 onRefresh={() => {
                     // Odśwież dane bez przeładowania strony
                     router.reload({ only: ['feeTypes'] });
@@ -1352,10 +1798,10 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                     setShowPaymentModal(false);
                     setPrefilledPaymentData(null);
                 }}
-                property={property}
-                feeTypes={feeTypes || []}
-                paymentMethodOptions={paymentMethodOptions || []}
-                statusOptions={statusOptions || []}
+                property={safeProperty}
+                feeTypes={safeFeeTypes}
+                paymentMethodOptions={safePaymentMethodOptions}
+                statusOptions={safeStatusOptions}
                 prefilledData={prefilledPaymentData}
                 onSuccess={() => {
                     // Odśwież dane po dodaniu płatności
@@ -1372,10 +1818,10 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
                     setSelectedPayment(null);
                 }}
                 payment={selectedPayment}
-                property={property}
-                feeTypes={feeTypes || []}
-                paymentMethodOptions={paymentMethodOptions || []}
-                statusOptions={statusOptions || []}
+                property={safeProperty}
+                feeTypes={safeFeeTypes}
+                paymentMethodOptions={safePaymentMethodOptions}
+                statusOptions={safeStatusOptions}
                 onSuccess={() => {
                     // Odśwież dane po edycji płatności
                     router.reload({ only: ['recentPayments'] });
@@ -1383,4 +1829,36 @@ export default function Show({ property, feeTypes, requiredPayments, paymentStat
             />
         </AuthenticatedLayout>
     );
+    
+    } catch (error) {
+        console.error('Error in Show component:', error);
+        return (
+            <AuthenticatedLayout>
+                <Head title="Błąd" />
+                <div className="py-12">
+                    <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                            <div className="p-6 text-gray-900">
+                                <h1 className="text-2xl font-bold text-red-600 mb-4">Wystąpił błąd</h1>
+                                <p className="text-gray-600 mb-4">
+                                    Przepraszamy, wystąpił nieoczekiwany błąd podczas ładowania strony.
+                                </p>
+                                <button 
+                                    onClick={() => window.location.reload()}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                                >
+                                    Odśwież stronę
+                                </button>
+                                <div className="mt-4 text-sm text-gray-500">
+                                    Błąd: {error.message}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </AuthenticatedLayout>
+        );
+    }
 }
+
+export default Show;

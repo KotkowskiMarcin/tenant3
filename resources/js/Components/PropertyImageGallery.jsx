@@ -141,7 +141,7 @@ export default function PropertyImageGallery({ property, canManage = false }) {
                     {primaryImage ? (
                         <div className="relative group">
                             <img
-                                src={`/storage/${primaryImage.file_path}`}
+                                src={primaryImage.url}
                                 alt={primaryImage.original_name}
                                 className="w-full h-64 lg:h-80 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                                 onClick={() => openLightbox(primaryImage, 0)}
@@ -177,7 +177,7 @@ export default function PropertyImageGallery({ property, canManage = false }) {
                     {additionalImages.map((image, index) => (
                         <div key={image.id} className="relative group">
                             <img
-                                src={`/storage/${image.file_path}`}
+                                src={image.url}
                                 alt={image.original_name}
                                 className="w-full h-20 object-cover rounded cursor-pointer hover:opacity-90 transition-opacity"
                                 onClick={() => openLightbox(image, index + 1)}
@@ -292,7 +292,7 @@ export default function PropertyImageGallery({ property, canManage = false }) {
                         </button>
                         
                         <img
-                            src={`/storage/${selectedImage.file_path}`}
+                            src={selectedImage.url}
                             alt={selectedImage.original_name}
                             className="max-w-full max-h-full object-contain"
                         />

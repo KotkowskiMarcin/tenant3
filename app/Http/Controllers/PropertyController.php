@@ -76,7 +76,7 @@ class PropertyController extends Controller
      */
     public function show(Property $property)
     {
-        $property->load(['owner', 'images', 'attachments', 'events', 'feeTypes', 'payments']);
+        $property->load(['owner', 'images', 'attachments', 'events', 'feeTypes', 'payments', 'rentals.tenant', 'meters']);
         
         // Get financial data
         $currentYear = now()->year;
@@ -131,7 +131,16 @@ class PropertyController extends Controller
             return ['value' => $key, 'label' => $value];
         }, $statusOptionsRaw, array_keys($statusOptionsRaw));
 
-        return Inertia::render('Properties/Show', [
+        // Pobierz wszystkich najemców dla modalu
+        $allTenants = \App\Models\Tenant::orderBy('last_name')->orderBy('first_name')->get();
+        
+        // Opcje rozliczania dla najmów
+        $billingTypeOptionsRaw = \App\Models\Rental::getBillingTypeOptions();
+        $billingTypeOptions = array_map(function($value, $key) {
+            return ['value' => $key, 'label' => $value];
+        }, $billingTypeOptionsRaw, array_keys($billingTypeOptionsRaw));
+
+            return Inertia::render('Properties/Show', [
             'property' => $property,
             'feeTypes' => $feeTypesCollection,
             'requiredPayments' => $requiredPayments,
@@ -143,6 +152,8 @@ class PropertyController extends Controller
             'frequencyTypeOptions' => $frequencyTypeOptions,
             'paymentMethodOptions' => $paymentMethodOptions,
             'statusOptions' => $statusOptions,
+            'allTenants' => $allTenants,
+            'billingTypeOptions' => $billingTypeOptions,
         ]);
     }
 

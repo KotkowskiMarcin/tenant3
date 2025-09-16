@@ -46,6 +46,11 @@ export default function Dashboard({ data }) {
 - `Checkbox` - Pole wyboru
 - `Modal` - Okno modalne
 - `PropertyImageGallery` - Galeria zdjęć nieruchomości z lightboxem
+- `Meters/` - Komponenty zarządzania licznikami nieruchomości
+  - `MeterManagementModal` - Modal zarządzania licznikami
+  - `MeterEditModal` - Modal edycji/tworzenia licznika
+  - `MeterViewModal` - Modal podglądu licznika
+  - `MeterDeleteModal` - Modal usuwania licznika
 
 ### Layouty (Layouts/)
 - `GuestLayout` - Layout dla gości
@@ -288,3 +293,53 @@ import { Link } from '@inertiajs/react';
 - **Data Refresh:** Odświeżanie danych bez pełnego przeładowania strony
 - **Loading States:** Stany ładowania podczas operacji
 - **Success Feedback:** Komunikaty o pomyślnym wykonaniu akcji
+
+## Rental Attachment Management Patterns
+- **Rental-Attachment Relationship:** Relacja jeden-do-wielu między najmami a załącznikami
+- **File Type Support:** Obsługa wszystkich typów plików z kompaktowymi ikonami
+- **File Upload:** Upload wielu plików jednocześnie z opcjonalnymi opisami
+- **Storage Management:** Organizacja plików w katalogu rental-attachments
+- **File Download:** Bezpieczne pobieranie plików z oryginalnymi nazwami
+- **Attachment Management:** Edycja opisów i usuwanie załączników
+- **Modal Interface:** Zarządzanie załącznikami w dedykowanym modalu
+- **Table Layout:** Kompaktowa tabela z kolumnami nazwa, opis, rozmiar, data, akcje
+- **Description Support:** Opcjonalne opisy załączników do 500 znaków
+- **Inline Actions:** Przyciski akcji bezpośrednio w tabeli (pobierz, edytuj, usuń)
+- **Smart Modal:** Inteligentny modal z trybem dodawania i edycji w zależności od props
+- **HTTP Method Fix:** Używanie PUT zamiast PATCH dla aktualizacji załączników
+- **State Management:** Zarządzanie stanem edytowanego załącznika przez parent component
+- **Form Reset:** Resetowanie formularzy po pomyślnym wykonaniu akcji
+- **Error Handling:** Obsługa błędów walidacji w modalach edycji i dodawania
+
+## Meter Management Patterns
+- **Property-Meter Relationship:** Relacja jeden-do-wielu między nieruchomościami a licznikami
+- **Meter Data Structure:** Nazwa, numer seryjny, dostawca, aktualny stan, jednostka, cena za jednostkę
+- **Unit Support:** Obsługa różnych jednostek pomiarowych (kWh, m³, GJ, MWh, l, kg, t)
+- **Cost Calculation:** Automatyczne obliczanie kosztu całkowitego na podstawie stanu i ceny za jednostkę
+- **Formatted Display:** Sformatowane wyświetlanie danych z jednostkami i walutą
+- **Modal Interface:** Zarządzanie licznikami w dedykowanym modalu z tabelą i formularzami
+- **Table Layout:** Tabela z kolumnami nazwa, numer seryjny, dostawca, stan, cena/jednostka, koszt całkowity
+- **Inline Actions:** Przyciski akcji bezpośrednio w tabeli (edytuj, usuń)
+- **Form Validation:** Walidacja pól wymaganych i opcjonalnych z obsługą błędów
+- **Cost Preview:** Podgląd kosztu całkowitego w czasie rzeczywistym podczas edycji
+- **Provider Support:** Opcjonalne pole tekstowe dla dostawcy usług (textarea)
+- **Serial Number Tracking:** Unikalne numery seryjne dla identyfikacji liczników
+- **Tab Integration:** Integracja z systemem zakładek w szczegółach nieruchomości
+- **Empty State:** Obsługa stanu pustego z zachętą do dodania pierwszego licznika
+
+## Monthly Settlement Patterns
+- **Rental-Settlement Relationship:** Relacja jeden-do-wielu między najmami a rozliczeniami miesięcznymi
+- **Settlement Data Structure:** ID najmu, rok, miesiąc, łączna kwota, status, data wystawienia, data zapłaty, składniki (JSON)
+- **Component Types:** Czynsz (rent), opłaty licznikowe (meter), inne opłaty (other)
+- **Component Status:** Aktywny (active), nieaktywny (inactive)
+- **JSON Components:** Składniki przechowywane jako JSON z polami: name, amount, type, status, description
+- **Meter Integration:** Automatyczne generowanie składników dla liczników z obliczaniem zużycia
+- **Rent Integration:** Automatyczne dodawanie czynszu jako domyślnego składnika
+- **Status Management:** Wystawiony (issued), zapłacony (paid), niezapłacony (unpaid)
+- **Unique Constraint:** Unikalność rozliczenia dla najmu + rok + miesiąc
+- **Automatic Calculation:** Automatyczne obliczanie łącznej kwoty na podstawie aktywnych składników
+- **Expandable Rows:** Rozwijane wiersze w tabeli pokazujące szczegóły składników
+- **Form Generation:** Automatyczne generowanie formularza z domyślnymi składnikami
+- **Meter Reading Calculation:** Obliczanie zużycia i kwoty na podstawie aktualnego i poprzedniego stanu licznika
+- **Tab Integration:** Integracja z systemem zakładek w szczegółach najmu
+- **Validation Rules:** Walidacja unikalności, wymaganych pól i formatów danych
