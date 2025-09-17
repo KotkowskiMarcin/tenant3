@@ -88,6 +88,13 @@
 - **Składniki rozliczenia** - JSON z polami: name, amount, type (rent/meter/other), status, description
 - **Automatyczne obliczanie** - Zużycie i kwoty dla liczników na podstawie aktualnego i poprzedniego stanu
 - **Walidacja unikalności** - Sprawdzanie czy rozliczenie dla danego najmu, roku i miesiąca już istnieje
+- **Usunięcie auto-kalkulacji licznika** - Usunięto funkcjonalność automatycznego wyliczania stanu licznika na podstawie kwoty
+- **Filtrowanie rozliczeń nieopłaconych** - W zakładce finansowej rozliczenia nieopłacone nie biorą udziału w obliczeniach
+- **Wykres liniowy rozliczeń** - Zmieniono wykres "Rozliczenia w czasie" z słupków na wykres liniowy
+- **System filtrów w zakładce finansowej** - Pełna implementacja filtrów czasowych z przyciskami "Zastosuj filtry" i "Resetuj"
+- **Endpoint filtrów finansowych** - Nowy endpoint `/rentals/{rental}/financial-data` dla filtrowanych danych
+- **Przycisk Resetuj filtry** - Resetuje daty do daty rozpoczęcia wynajmu i aktualnej daty
+- **Zachowanie zakładki po filtrach** - Po zastosowaniu filtrów zakładka "Finanse" pozostaje aktywna
 
 ### 🔄 W Trakcie
 - **Dokumentacja** - Aktualizacja dokumentacji zgodnie z aktualnym stanem funkcjonalności
@@ -125,9 +132,10 @@
 - `app/Http/Controllers/FeeTypeController.php` - Zarządzanie szablonami opłat
 - `app/Http/Controllers/PaymentController.php` - Zarządzanie płatnościami
 - `app/Http/Controllers/TenantController.php` - Zarządzanie najemcami
-- `app/Http/Controllers/RentalController.php` - Zarządzanie najmami
+- `app/Http/Controllers/RentalController.php` - Zarządzanie najmami + endpoint filtrów finansowych
 - `app/Http/Controllers/RentalAttachmentController.php` - Zarządzanie załącznikami najmów
 - `app/Http/Controllers/PropertyMeterController.php` - Zarządzanie licznikami nieruchomości
+- `app/Http/Controllers/MonthlySettlementController.php` - Zarządzanie rozliczeniami miesięcznymi
 - `app/Http/Middleware/AdminMiddleware.php` - Ochrona tras admin
 - `app/Models/User.php` - Model z systemem ról
 - `app/Models/PropertyImage.php` - Model zdjęć nieruchomości
@@ -139,6 +147,7 @@
 - `app/Models/Rental.php` - Model najmów
 - `app/Models/RentalAttachment.php` - Model załączników najmów
 - `app/Models/PropertyMeter.php` - Model liczników nieruchomości
+- `app/Models/MonthlySettlement.php` - Model rozliczeń miesięcznych
 - `app/Services/FeeTypeService.php` - Logika biznesowa szablonów opłat
 - `app/Services/PaymentService.php` - Logika biznesowa płatności
 - `app/Services/PaymentScheduler.php` - Generator wymaganych płatności
@@ -168,6 +177,9 @@
 - `resources/js/Components/Meters/MeterEditModal.jsx` - Modal edycji/tworzenia licznika
 - `resources/js/Components/Meters/MeterViewModal.jsx` - Modal podglądu licznika
 - `resources/js/Components/Meters/MeterDeleteModal.jsx` - Modal usuwania licznika
+- `resources/js/Components/FinancialTab.jsx` - Zakładka finansowa z filtrami i wykresami
+- `resources/js/Components/Settlements/SettlementCreateModal.jsx` - Modal tworzenia rozliczeń
+- `resources/js/Components/Settlements/SettlementEditModal.jsx` - Modal edycji rozliczeń
 - `resources/js/Layouts/AuthenticatedLayout.jsx` - Layout z menu admin
 
 ## Konfiguracja Środowiska
@@ -242,6 +254,12 @@
 - ✅ Modal usuwania licznika - Potwierdzenie z podglądem danych
 - ✅ Naprawa problemów z zapisywaniem - Dodano property_id i poprawiono przekazywanie danych
 - ✅ Usunięcie kosztu całkowitego - Usunięto z tabeli i modalu podglądu
+- ✅ System filtrów w zakładce finansowej - Pełna implementacja z przyciskami "Zastosuj filtry" i "Resetuj"
+- ✅ Wykres liniowy rozliczeń - Zmieniono wykres "Rozliczenia w czasie" z słupków na wykres liniowy
+- ✅ Filtrowanie rozliczeń nieopłaconych - Rozliczenia nieopłacone nie biorą udziału w obliczeniach finansowych
+- ✅ Usunięcie auto-kalkulacji licznika - Usunięto funkcjonalność automatycznego wyliczania stanu licznika na podstawie kwoty
+- ✅ Przycisk Resetuj filtry - Resetuje daty do daty rozpoczęcia wynajmu i aktualnej daty
+- ✅ Zachowanie zakładki po filtrach - Po zastosowaniu filtrów zakładka "Finanse" pozostaje aktywna
 
 ## Znane Problemy
 - Brak znanych problemów w aktualnej wersji

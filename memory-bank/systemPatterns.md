@@ -51,6 +51,10 @@ export default function Dashboard({ data }) {
   - `MeterEditModal` - Modal edycji/tworzenia licznika
   - `MeterViewModal` - Modal podglądu licznika
   - `MeterDeleteModal` - Modal usuwania licznika
+- `FinancialTab` - Zakładka finansowa z filtrami i wykresami
+- `Settlements/` - Komponenty rozliczeń miesięcznych
+  - `SettlementCreateModal` - Modal tworzenia rozliczeń
+  - `SettlementEditModal` - Modal edycji rozliczeń
 
 ### Layouty (Layouts/)
 - `GuestLayout` - Layout dla gości
@@ -99,6 +103,7 @@ import { Link } from '@inertiajs/react';
 - **Inertia.js Forms:** Zarządzanie formularzami
 - **Laravel Session:** Stan sesji po stronie serwera
 - **React State:** Lokalny stan komponentów
+- **Filter State Management:** Zarządzanie stanem filtrów z automatycznym zastosowaniem
 
 ## Styling Pattern
 - **Tailwind CSS:** Utility-first CSS framework
@@ -342,4 +347,16 @@ import { Link } from '@inertiajs/react';
 - **Form Generation:** Automatyczne generowanie formularza z domyślnymi składnikami
 - **Meter Reading Calculation:** Obliczanie zużycia i kwoty na podstawie aktualnego i poprzedniego stanu licznika
 - **Tab Integration:** Integracja z systemem zakładek w szczegółach najmu
+
+## Financial Filter Patterns
+- **Date Range Filtering:** Filtrowanie danych finansowych według zakresu dat
+- **Default Date Logic:** Domyślne daty na podstawie daty rozpoczęcia wynajmu i aktualnej daty
+- **Filter Reset:** Resetowanie filtrów do domyślnych wartości z automatycznym zastosowaniem
+- **Real-time Filtering:** Natychmiastowe zastosowanie filtrów bez przeładowania strony
+- **Tab Persistence:** Zachowanie aktywnej zakładki po zastosowaniu filtrów
+- **Loading States:** Wskaźniki ładowania podczas aplikowania filtrów
+- **Error Handling:** Obsługa błędów walidacji dat i komunikaty użytkownika
+- **API Endpoint Pattern:** Dedykowany endpoint dla filtrowanych danych finansowych
+- **Inertia Response:** Zwracanie odpowiedzi Inertia zamiast JSON dla kompatybilności
+- **Data Synchronization:** Synchronizacja stanu filtrów z danymi wyświetlanymi
 - **Validation Rules:** Walidacja unikalności, wymaganych pól i formatów danych

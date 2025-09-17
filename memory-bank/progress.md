@@ -165,6 +165,13 @@
 - ✅ Składniki rozliczenia - JSON z polami: name, amount, type (rent/meter/other), status, description
 - ✅ Automatyczne obliczanie - Zużycie i kwoty dla liczników na podstawie aktualnego i poprzedniego stanu
 - ✅ Walidacja unikalności - Sprawdzanie czy rozliczenie dla danego najmu, roku i miesiąca już istnieje
+- ✅ System filtrów w zakładce finansowej - Pełna implementacja z przyciskami "Zastosuj filtry" i "Resetuj"
+- ✅ Wykres liniowy rozliczeń - Zmieniono wykres "Rozliczenia w czasie" z słupków na wykres liniowy
+- ✅ Filtrowanie rozliczeń nieopłaconych - Rozliczenia nieopłacone nie biorą udziału w obliczeniach finansowych
+- ✅ Usunięcie auto-kalkulacji licznika - Usunięto funkcjonalność automatycznego wyliczania stanu licznika na podstawie kwoty
+- ✅ Przycisk Resetuj filtry - Resetuje daty do daty rozpoczęcia wynajmu i aktualnej daty
+- ✅ Zachowanie zakładki po filtrach - Po zastosowaniu filtrów zakładka "Finanse" pozostaje aktywna
+- ✅ Endpoint filtrów finansowych - Nowy endpoint `/rentals/{rental}/financial-data` dla filtrowanych danych
 
 ### Optymalizacja
 - [ ] Optymalizacja bundle'ów Vite
@@ -187,6 +194,7 @@
 - ✅ Błąd przekierowania na /payments po dodaniu płatności - rozwiązany
 - ✅ Błąd "Undefined array key" w filtrach płatności - naprawiony
 - ✅ Błąd Inertia.js "All Inertia requests must receive a valid Inertia response" - rozwiązany
+- ✅ Błąd "Cannot read properties of undefined (reading 'id')" w Show.jsx - naprawiony przez dodanie brakujących danych do endpointu
 
 ### Aktualne Problemy
 - Tabele owners i properties zostały wyczyszczone (brak danych testowych)
@@ -201,23 +209,23 @@
 - **PHP:** 8.2+
 - **Zależności:** 79 pakietów
 - **Migracje:** 11 wykonane (w tym role, owners, properties, property_images, cooperative_info, tenants, rentals, property_meters)
-- **Kontrolery:** UserController + Auth + OwnerController + PropertyController + PropertyImageController + PropertyAttachmentController + PropertyEventController + FeeTypeController + PaymentController + TenantController + RentalController + RentalAttachmentController + PropertyMeterController
+- **Kontrolery:** UserController + Auth + OwnerController + PropertyController + PropertyImageController + PropertyAttachmentController + PropertyEventController + FeeTypeController + PaymentController + TenantController + RentalController + RentalAttachmentController + PropertyMeterController + MonthlySettlementController
 - **Middleware:** AdminMiddleware
-- **Modele:** User, Owner, Property, PropertyImage, PropertyAttachment, PropertyEvent, FeeType, Payment, Tenant, Rental, RentalAttachment, PropertyMeter z relacjami
+- **Modele:** User, Owner, Property, PropertyImage, PropertyAttachment, PropertyEvent, FeeType, Payment, Tenant, Rental, RentalAttachment, PropertyMeter, MonthlySettlement z relacjami
 - **Serwisy:** FeeTypeService, PaymentService, PaymentScheduler
 - **Komponenty modali:** FeeTypesManagementModal, PaymentCreateModal, PaymentEditModal, MeterManagementModal, MeterEditModal, MeterDeleteModal
 
 ### Frontend
 - **React:** 18.2.0
 - **Zależności NPM:** 253 pakiety (w tym @heroicons/react)
-- **Komponenty:** 33+ komponentów UI (w tym PropertyImageGallery, PropertyAttachmentManagementModal, PropertyAttachmentCard, PropertyAttachmentEditModal, PropertyAttachmentDeleteModal, PropertyAttachmentAddModal, PropertyEventTimeline, PropertyEventManagementModal, PropertyEventEditModal, FeeTypesManagementModal, PaymentCreateModal, PaymentEditModal, RentalAttachmentManagementModal, MeterManagementModal, MeterEditModal, MeterViewModal, MeterDeleteModal)
+- **Komponenty:** 35+ komponentów UI (w tym PropertyImageGallery, PropertyAttachmentManagementModal, PropertyAttachmentCard, PropertyAttachmentEditModal, PropertyAttachmentDeleteModal, PropertyAttachmentAddModal, PropertyEventTimeline, PropertyEventManagementModal, PropertyEventEditModal, FeeTypesManagementModal, PaymentCreateModal, PaymentEditModal, RentalAttachmentManagementModal, MeterManagementModal, MeterEditModal, MeterViewModal, MeterDeleteModal, FinancialTab, SettlementCreateModal, SettlementEditModal)
 - **Strony:** 35+ stron aplikacji (w tym zarządzanie użytkownikami, właścicielami, nieruchomościami, najemcami, najmami, szablonami opłat i płatnościami)
 - **Layouty:** 2 layouty (Guest + Authenticated)
 
 ### Baza Danych
 - **Typ:** SQLite
-- **Tabele:** users (z polem role), owners, properties (z polem cooperative_info), property_images, property_attachments, property_events, fee_types, payments, tenants, rentals, rental_attachments, property_meters, cache, jobs
-- **Migracje:** Wszystkie wykonane (w tym property_events, fee_types, payments, tenants, rentals, property_meters)
+- **Tabele:** users (z polem role), owners, properties (z polem cooperative_info), property_images, property_attachments, property_events, fee_types, payments, tenants, rentals, rental_attachments, property_meters, monthly_settlements, cache, jobs
+- **Migracje:** Wszystkie wykonane (w tym property_events, fee_types, payments, tenants, rentals, property_meters, monthly_settlements)
 - **Seedery:** AdminUserSeeder (admin@app.pl), OwnerSeeder (5 właścicieli), PropertySeeder (8 nieruchomości), Property11DataSeeder (dane testowe dla nieruchomości ID 11)
 - **Status danych:** Tabele owners i properties wyczyszczone (0 rekordów), dane testowe dla nieruchomości ID 11 dostępne
 

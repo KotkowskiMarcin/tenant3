@@ -107,6 +107,9 @@ Route::middleware('auth')->group(function () {
     Route::get('rentals/{rental}/monthly-settlements/meter-data', [MonthlySettlementController::class, 'getMeterData'])->name('rentals.monthly-settlements.meter-data');
     Route::get('rentals/{rental}/monthly-settlements/generate-components', [MonthlySettlementController::class, 'generateDefaultComponents'])->name('rentals.monthly-settlements.generate-components');
     
+    // Trasy danych finansowych
+    Route::get('rentals/{rental}/financial-data', [RentalController::class, 'getFinancialData'])->name('rentals.financial-data');
+    
     // Trasy zarządzania licznikami nieruchomości
     Route::resource('property-meters', PropertyMeterController::class);
     Route::get('properties/{property}/meters', [PropertyMeterController::class, 'index'])->name('properties.meters.index');

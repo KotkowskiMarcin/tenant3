@@ -44,6 +44,13 @@ Nowoczesna aplikacja webowa zbudowana na Laravel 11 i React, wykorzystująca Lar
 - ✅ System zarządzania właścicielami i nieruchomościami
 - ✅ Naprawa błędów paginacji w Inertia.js
 - ✅ Czyszczenie tabel danych testowych
+- ✅ System zarządzania najemcami i najmami
+- ✅ System rozliczeń miesięcznych z automatycznymi obliczeniami
+- ✅ System zarządzania licznikami nieruchomości
+- ✅ Zakładka finansowa z filtrami czasowymi i wykresami
+- ✅ System filtrów z przyciskami "Zastosuj filtry" i "Resetuj"
+- ✅ Wykres liniowy rozliczeń w czasie
+- ✅ Filtrowanie rozliczeń nieopłaconych z obliczeń finansowych
 - 🔄 Gotowy do dalszego rozwoju
 
 ## Następne Kroki

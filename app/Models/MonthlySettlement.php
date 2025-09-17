@@ -28,6 +28,12 @@ class MonthlySettlement extends Model
         'paid_at' => 'datetime',
     ];
 
+    protected $appends = [
+        'formatted_date',
+        'formatted_amount',
+        'status_label',
+    ];
+
     // Statusy rozliczenia
     const STATUS_ISSUED = 'issued';
     const STATUS_PAID = 'paid';

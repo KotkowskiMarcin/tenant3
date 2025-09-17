@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class RentalController extends Controller
 {
@@ -89,7 +90,7 @@ class RentalController extends Controller
      */
     public function show(Rental $rental)
     {
-        $rental->load(['property', 'tenants', 'attachments', 'tenants.events' => function($query) {
+        $rental->load(['property.meters', 'tenants', 'attachments', 'tenants.events' => function($query) {
             $query->with('createdBy')->orderBy('created_at', 'desc')->limit(10);
         }]);
         
@@ -99,9 +100,31 @@ class RentalController extends Controller
         // Pobierz wszystkich najemców do dodawania
         $allTenants = Tenant::orderBy('last_name')->orderBy('first_name')->get();
 
+        // Pobierz rozliczenia miesięczne dla najmu
+        $settlements = $rental->monthlySettlements()
+            ->orderBy('year', 'desc')
+            ->orderBy('month', 'desc')
+            ->get();
+
+        // Pobierz dane finansowe
+        try {
+            $financialData = $this->getFinancialDataInternal($rental);
+        } catch (\Exception $e) {
+            \Log::error('Error generating financial data: ' . $e->getMessage());
+            $financialData = [
+                'summary' => ['total_revenue' => 0, 'paid_revenue' => 0, 'unpaid_revenue' => 0, 'settlements_count' => 0],
+                'expense_breakdown' => ['rent' => 0, 'meters' => [], 'other' => 0],
+                'chart_data' => [],
+                'monthly_stats' => [],
+                'filters' => ['start_date' => $rental->start_date->format('Y-m-d'), 'end_date' => now()->format('Y-m-d')]
+            ];
+        }
+
         return Inertia::render('Rentals/Show', [
             'rental' => $rental,
             'allTenants' => $allTenants,
+            'settlements' => $settlements,
+            'financialData' => $financialData,
         ]);
     }
 
@@ -357,5 +380,203 @@ class RentalController extends Controller
             'metadata' => $metadata,
             'created_by' => Auth::id(),
         ]);
+    }
+
+    /**
+     * Get financial data for rental with filters.
+     */
+    public function getFinancialData(Request $request, Rental $rental)
+    {
+        try {
+            $financialData = $this->getFinancialDataInternal($rental, $request->input('start_date'), $request->input('end_date'));
+            
+            // Pobierz dane potrzebne do komponentu Show
+            $rental->load(['property.meters', 'tenants', 'attachments', 'tenants.events' => function($query) {
+                $query->with('createdBy')->orderBy('created_at', 'desc')->limit(10);
+            }]);
+            
+            // Dodaj pole is_active do obiektu rental
+            $rental->is_active = $rental->isActive();
+
+            // Pobierz wszystkich najemców do dodawania
+            $allTenants = Tenant::orderBy('last_name')->orderBy('first_name')->get();
+
+            // Pobierz rozliczenia miesięczne dla najmu
+            $settlements = $rental->monthlySettlements()
+                ->orderBy('year', 'desc')
+                ->orderBy('month', 'desc')
+                ->get();
+            
+            return Inertia::render('Rentals/Show', [
+                'rental' => $rental,
+                'allTenants' => $allTenants,
+                'settlements' => $settlements,
+                'financialData' => $financialData,
+                'tab' => $request->input('tab', 'financial'), // Użyj parametru tab z żądania lub domyślnie 'financial'
+                'only' => ['financialData'] // Tylko dane finansowe będą przekazane do frontendu
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error generating financial data: ' . $e->getMessage());
+            
+            $errorFinancialData = [
+                'summary' => ['total_revenue' => 0, 'paid_revenue' => 0, 'unpaid_revenue' => 0, 'settlements_count' => 0],
+                'expense_breakdown' => ['rent' => 0, 'meters' => [], 'other' => 0],
+                'chart_data' => [],
+                'monthly_stats' => [],
+                'filters' => ['start_date' => $rental->start_date->format('Y-m-d'), 'end_date' => now()->format('Y-m-d')]
+            ];
+            
+            // Pobierz dane potrzebne do komponentu Show nawet w przypadku błędu
+            $rental->load(['property.meters', 'tenants', 'attachments', 'tenants.events' => function($query) {
+                $query->with('createdBy')->orderBy('created_at', 'desc')->limit(10);
+            }]);
+            
+            $rental->is_active = $rental->isActive();
+            $allTenants = Tenant::orderBy('last_name')->orderBy('first_name')->get();
+            $settlements = $rental->monthlySettlements()
+                ->orderBy('year', 'desc')
+                ->orderBy('month', 'desc')
+                ->get();
+            
+            return Inertia::render('Rentals/Show', [
+                'rental' => $rental,
+                'allTenants' => $allTenants,
+                'settlements' => $settlements,
+                'financialData' => $errorFinancialData,
+                'tab' => $request->input('tab', 'financial'), // Użyj parametru tab z żądania lub domyślnie 'financial'
+                'only' => ['financialData']
+            ]);
+        }
+    }
+
+
+    /**
+     * Internal method to get financial data for rental.
+     */
+    private function getFinancialDataInternal($rental, $startDate = null, $endDate = null)
+    {
+        // Zabezpieczenia dla dat
+        if ($startDate) {
+            $startDate = \Carbon\Carbon::parse($startDate);
+        } else {
+            $startDate = $rental->start_date ? \Carbon\Carbon::parse($rental->start_date) : \Carbon\Carbon::now()->subYear();
+        }
+        
+        if ($endDate) {
+            $endDate = \Carbon\Carbon::parse($endDate);
+        } else {
+            $endDate = $rental->end_date ? \Carbon\Carbon::parse($rental->end_date) : \Carbon\Carbon::now();
+        }
+        
+        error_log('FinancialData DEBUG: Rental ID: ' . $rental->id);
+        
+        // Pobierz rozliczenia z filtrowaniem według dat
+        $settlements = $rental->monthlySettlements()
+            ->where(function($query) use ($startDate, $endDate) {
+                $query->where(function($q) use ($startDate, $endDate) {
+                    $q->where('year', '>', $startDate->year)
+                      ->orWhere(function($q2) use ($startDate) {
+                          $q2->where('year', '=', $startDate->year)
+                             ->where('month', '>=', $startDate->month);
+                      });
+                })
+                ->where(function($q) use ($startDate, $endDate) {
+                    $q->where('year', '<', $endDate->year)
+                      ->orWhere(function($q2) use ($endDate) {
+                          $q2->where('year', '=', $endDate->year)
+                             ->where('month', '<=', $endDate->month);
+                      });
+                });
+            })
+            ->orderBy('year', 'asc')
+            ->orderBy('month', 'asc')
+            ->get();
+            
+        // Debug - sprawdź czy rozliczenia są pobierane
+        \Log::info('FinancialData: Found ' . $settlements->count() . ' settlements for rental ' . $rental->id);
+
+        // Oblicz przychody (tylko opłacone rozliczenia)
+        $paidSettlements = $settlements->where('status', 'paid');
+        $totalRevenue = $paidSettlements->sum('total_amount');
+        $paidRevenue = $paidSettlements->sum('total_amount');
+        $unpaidRevenue = $settlements->where('status', 'unpaid')->sum('total_amount');
+
+        // Analiza składników opłat
+        $expenseBreakdown = [
+            'rent' => 0,
+            'meters' => [],
+            'other' => 0
+        ];
+
+        // Analiza składników opłat tylko dla opłaconych rozliczeń
+        foreach ($paidSettlements as $settlement) {
+            if (is_array($settlement->components)) {
+                foreach ($settlement->components as $component) {
+                    if ($component['type'] === 'rent') {
+                        $expenseBreakdown['rent'] += $component['amount'];
+                    } elseif ($component['type'] === 'meter') {
+                        $meterName = $component['name'];
+                        if (!isset($expenseBreakdown['meters'][$meterName])) {
+                            $expenseBreakdown['meters'][$meterName] = 0;
+                        }
+                        $expenseBreakdown['meters'][$meterName] += $component['amount'];
+                    } else {
+                        $expenseBreakdown['other'] += $component['amount'];
+                    }
+                }
+            }
+        }
+
+        // Przygotuj dane do wykresu (tylko opłacone rozliczenia)
+        $chartData = $paidSettlements->map(function($settlement) {
+            return [
+                'period' => $settlement->year . '-' . str_pad($settlement->month, 2, '0', STR_PAD_LEFT),
+                'amount' => $settlement->total_amount,
+                'status' => $settlement->status,
+                'year' => $settlement->year,
+                'month' => $settlement->month
+            ];
+        })->values();
+
+        // Statystyki miesięczne - tylko opłacone rozliczenia
+        $monthlyStats = [];
+        
+        foreach ($paidSettlements as $settlement) {
+            $monthlyStats[] = [
+                'period' => $settlement->year . '-' . str_pad($settlement->month, 2, '0', STR_PAD_LEFT),
+                'year' => $settlement->year,
+                'month' => $settlement->month,
+                'month_name' => \Carbon\Carbon::create($settlement->year, $settlement->month, 1)->format('F'),
+                'total_amount' => $settlement->total_amount,
+                'settlements_count' => 1,
+                'paid_amount' => $settlement->total_amount,
+                'unpaid_amount' => 0,
+            ];
+        }
+        
+        \Log::info('FinancialData: Generated ' . count($monthlyStats) . ' monthly stats');
+
+        $result = [
+            'summary' => [
+                'total_revenue' => $totalRevenue,
+                'paid_revenue' => $paidRevenue,
+                'unpaid_revenue' => $unpaidRevenue,
+                'settlements_count' => $paidSettlements->count(),
+                'period_start' => $startDate->format('Y-m-d'),
+                'period_end' => $endDate->format('Y-m-d'),
+            ],
+            'expense_breakdown' => $expenseBreakdown,
+            'chart_data' => $chartData,
+            'monthly_stats' => $monthlyStats,
+            'filters' => [
+                'start_date' => $startDate->format('Y-m-d'),
+                'end_date' => $endDate->format('Y-m-d'),
+            ]
+        ];
+        
+        // Debug - sprawdź wynik
+        \Log::info('FinancialData: Final result - total_revenue: ' . $totalRevenue . ', settlements_count: ' . $settlements->count() . ', monthly_stats_count: ' . count($monthlyStats) . ', chart_data_count: ' . count($chartData));
+        
+        return $result;
     }
 }

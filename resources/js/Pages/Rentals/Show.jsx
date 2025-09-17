@@ -1,6 +1,6 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
     PencilIcon, 
     TrashIcon, 
@@ -15,20 +15,37 @@ import {
     MapPinIcon,
     BuildingOfficeIcon,
     InformationCircleIcon,
-    ChartBarIcon,
     ClipboardDocumentListIcon,
     PlusIcon,
-    StarIcon
+    StarIcon,
+    EyeIcon,
+    CheckCircleIcon,
+    XCircleIcon
 } from '@heroicons/react/24/outline';
 import RentalAttachmentManagementModal from '@/Components/RentalAttachmentManagementModal';
+import SettlementCreateModal from '@/Components/Settlements/SettlementCreateModal';
+import SettlementEditModal from '@/Components/Settlements/SettlementEditModal';
+import FinancialTab from '@/Components/FinancialTab';
 
-export default function Show({ rental, allTenants }) {
+export default function Show({ rental, allTenants, settlements, financialData }) {
+    const { props } = usePage();
     const [activeTab, setActiveTab] = useState('basic');
+    
+    // Odczytywanie parametru tab z sesji Inertia.js
+    useEffect(() => {
+        if (props.tab && ['basic', 'tenants', 'financial', 'attachments', 'events', 'settlements'].includes(props.tab)) {
+            setActiveTab(props.tab);
+        }
+    }, [props.tab]);
     const [showAddTenant, setShowAddTenant] = useState(false);
     const [newTenantId, setNewTenantId] = useState('');
     const [showAttachmentModal, setShowAttachmentModal] = useState(false);
     const [editingAttachment, setEditingAttachment] = useState(null);
-    console.log({ rental, allTenants });
+    const [expandedRows, setExpandedRows] = useState(new Set());
+    const [showSettlementCreateModal, setShowSettlementCreateModal] = useState(false);
+    const [showSettlementEditModal, setShowSettlementEditModal] = useState(false);
+    const [editingSettlement, setEditingSettlement] = useState(null);
+    console.log({ rental, allTenants, settlements, financialData });
     
     const formatDate = (date) => {
         return new Date(date).toLocaleDateString('pl-PL');
@@ -41,11 +58,97 @@ export default function Show({ rental, allTenants }) {
         }).format(amount);
     };
 
+    const toggleRow = (settlementId) => {
+        const newExpanded = new Set(expandedRows);
+        if (newExpanded.has(settlementId)) {
+            newExpanded.delete(settlementId);
+        } else {
+            newExpanded.add(settlementId);
+        }
+        setExpandedRows(newExpanded);
+    };
+
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case 'paid':
+                return <CheckCircleIcon className="w-5 h-5 text-green-500" />;
+            case 'issued':
+                return <ClockIcon className="w-5 h-5 text-yellow-500" />;
+            case 'unpaid':
+                return <XCircleIcon className="w-5 h-5 text-red-500" />;
+            default:
+                return <ClockIcon className="w-5 h-5 text-gray-500" />;
+        }
+    };
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'paid':
+                return 'bg-green-100 text-green-800';
+            case 'issued':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'unpaid':
+                return 'bg-red-100 text-red-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const getStatusLabel = (status) => {
+        switch (status) {
+            case 'paid':
+                return 'Zapłacony';
+            case 'issued':
+                return 'Wystawiony';
+            case 'unpaid':
+                return 'Niezapłacony';
+            default:
+                return 'Nieznany';
+        }
+    };
+
+    const handleMarkAsPaid = (settlement) => {
+        if (confirm('Czy na pewno chcesz oznaczyć to rozliczenie jako opłacone?')) {
+            router.post(route('rentals.monthly-settlements.mark-paid', [rental.id, settlement.id]), {}, {
+                onSuccess: () => {
+                    // Kontroler przekieruje do panelu najmu
+                }
+            });
+        }
+    };
+
+    const handleDelete = (settlement) => {
+        if (confirm('Czy na pewno chcesz usunąć to rozliczenie? Ta operacja nie może zostać cofnięta.')) {
+            router.delete(route('rentals.monthly-settlements.destroy', [rental.id, settlement.id]), {
+                onSuccess: () => {
+                    // Kontroler przekieruje do panelu najmu
+                }
+            });
+        }
+    };
+
+    const handleCreateSettlement = () => {
+        setShowSettlementCreateModal(true);
+    };
+
+    const handleEditSettlement = (settlement) => {
+        setEditingSettlement(settlement);
+        setShowSettlementEditModal(true);
+    };
+
+    const closeSettlementCreateModal = () => {
+        setShowSettlementCreateModal(false);
+    };
+
+    const closeSettlementEditModal = () => {
+        setShowSettlementEditModal(false);
+        setEditingSettlement(null);
+    };
+
     const tabs = [
         { id: 'basic', name: 'Podstawowe', icon: InformationCircleIcon },
         { id: 'tenants', name: 'Najemcy', icon: UserIcon },
-        { id: 'financial', name: 'Finansowy', icon: BanknotesIcon },
-        { id: 'payments', name: 'Płatności', icon: ChartBarIcon },
+        { id: 'financial', name: 'Finanse', icon: BanknotesIcon },
         { id: 'settlements', name: 'Rozliczenia', icon: DocumentTextIcon },
         { id: 'attachments', name: 'Załączniki', icon: ClipboardDocumentListIcon }
     ];
@@ -479,80 +582,9 @@ export default function Show({ rental, allTenants }) {
 
                             {/* Financial Tab */}
                             {activeTab === 'financial' && (
-                                <div className="space-y-6">
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                                            <BanknotesIcon className="w-5 h-5 mr-2" />
-                                            Informacje finansowe
-                                        </h2>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="bg-gray-50 p-6 rounded-lg">
-                                            <h3 className="text-lg font-medium text-gray-900 mb-4">Podstawowe opłaty</h3>
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Czynsz miesięczny</span>
-                                                    <span className="font-semibold">{formatCurrency(rental.rent_amount)}</span>
-                                                </div>
-                                                {rental.deposit_amount && (
-                                                    <div className="flex justify-between">
-                                                        <span className="text-gray-600">Kaucja</span>
-                                                        <span className="font-semibold">{formatCurrency(rental.deposit_amount)}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-gray-50 p-6 rounded-lg">
-                                            <h3 className="text-lg font-medium text-gray-900 mb-4">Rozliczenia</h3>
-                                            <div className="space-y-3">
-                                                {rental.billing_type && (
-                                                    <div className="flex justify-between">
-                                                        <span className="text-gray-600">Sposób rozliczania</span>
-                                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                                            rental.billing_type === 'invoice' 
-                                                                ? 'bg-blue-100 text-blue-800' 
-                                                                : 'bg-green-100 text-green-800'
-                                                        }`}>
-                                                            {rental.billing_type === 'invoice' ? 'Faktura' : 'Paragon'}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {rental.invoice_data && (
-                                        <div className="bg-gray-50 p-6 rounded-lg">
-                                            <h3 className="text-lg font-medium text-gray-900 mb-4">Dane do faktury</h3>
-                                            <pre className="text-sm text-gray-700 whitespace-pre-wrap">{rental.invoice_data}</pre>
-                                        </div>
-                                    )}
-                                </div>
+                                <FinancialTab rental={rental} financialData={financialData || null} />
                             )}
 
-                            {/* Payments Tab */}
-                            {activeTab === 'payments' && (
-                                <div className="space-y-6">
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                                            <ChartBarIcon className="w-5 h-5 mr-2" />
-                                            Płatności
-                                        </h2>
-                                        <button className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                                            <PlusIcon className="w-4 h-4 mr-2" />
-                                            Dodaj płatność
-                                        </button>
-                                    </div>
-
-                                    <div className="text-center py-12">
-                                        <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400" />
-                                        <h3 className="mt-2 text-sm font-medium text-gray-900">Brak płatności</h3>
-                                        <p className="mt-1 text-sm text-gray-500">Płatności dla tego najmu będą wyświetlane tutaj.</p>
-                                    </div>
-                                </div>
-                            )}
 
                             {/* Settlements Tab */}
                             {activeTab === 'settlements' && (
@@ -562,33 +594,200 @@ export default function Show({ rental, allTenants }) {
                                             <DocumentTextIcon className="w-5 h-5 mr-2" />
                                             Rozliczenia miesięczne
                                         </h2>
-                                        <Link
-                                            href={route('rentals.monthly-settlements.index', rental.id)}
-                                            className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                                        >
-                                            <PlusIcon className="w-4 h-4 mr-2" />
-                                            Zarządzaj rozliczeniami
-                                        </Link>
+                                        <div className="flex space-x-2">
+                                            <button
+                                                onClick={handleCreateSettlement}
+                                                className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                            >
+                                                <PlusIcon className="w-4 h-4 mr-2" />
+                                                Generuj nowe rozliczenie
+                                            </button>
+                                            <Link
+                                                href={route('rentals.monthly-settlements.index', rental.id)}
+                                                className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                            >
+                                                <DocumentTextIcon className="w-4 h-4 mr-2" />
+                                                Zarządzaj rozliczeniami
+                                            </Link>
+                                        </div>
                                     </div>
 
                                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                                         <div className="p-6">
-                                            <div className="text-center py-12">
-                                                <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
-                                                <h3 className="mt-2 text-sm font-medium text-gray-900">Rozliczenia miesięczne</h3>
-                                                <p className="mt-1 text-sm text-gray-500">
-                                                    Kliknij przycisk powyżej, aby zarządzać rozliczeniami miesięcznymi dla tego najmu.
-                                                </p>
-                                                <div className="mt-6">
-                                                    <Link
-                                                        href={route('rentals.monthly-settlements.index', rental.id)}
-                                                        className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                                                    >
-                                                        <PlusIcon className="w-4 h-4 mr-2" />
-                                                        Przejdź do rozliczeń
-                                                    </Link>
+                                            {settlements && settlements.length === 0 ? (
+                                                <div className="text-center py-12">
+                                                    <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+                                                    <h3 className="mt-2 text-sm font-medium text-gray-900">Brak rozliczeń</h3>
+                                                    <p className="mt-1 text-sm text-gray-500">
+                                                        Zacznij od utworzenia pierwszego rozliczenia miesięcznego.
+                                                    </p>
+                                                    <div className="mt-6">
+                                                        <button
+                                                            onClick={handleCreateSettlement}
+                                                            className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                                        >
+                                                            <PlusIcon className="w-4 h-4 mr-2" />
+                                                            Generuj nowe rozliczenie
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            ) : (
+                                                <div className="overflow-x-auto">
+                                                    <table className="min-w-full divide-y divide-gray-200">
+                                                        <thead className="bg-gray-50">
+                                                            <tr>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Okres
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Kwota
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Status
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Data wystawienia
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Data zapłaty
+                                                                </th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Akcje
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="bg-white divide-y divide-gray-200">
+                                                            {settlements && settlements.map((settlement) => (
+                                                                <>
+                                                                    <tr key={settlement.id} className="hover:bg-gray-50">
+                                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                                            <div className="flex items-center">
+                                                                                <CalendarIcon className="w-4 h-4 text-gray-400 mr-2" />
+                                                                                <span className="text-sm font-medium text-gray-900">
+                                                                                    {settlement.formatted_date || `${settlement.month}/${settlement.year}` || 'Brak daty'}
+                                                                                </span>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                                            <div className="flex items-center">
+                                                                                <CurrencyDollarIcon className="w-4 h-4 text-gray-400 mr-2" />
+                                                                                <span className="text-sm font-medium text-gray-900">
+                                                                                    {settlement.formatted_amount || formatCurrency(settlement.total_amount) || 'Brak kwoty'}
+                                                                                </span>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                                            <div className="flex items-center">
+                                                                                {getStatusIcon(settlement.status)}
+                                                                                <span className={`ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(settlement.status)}`}>
+                                                                                    {getStatusLabel(settlement.status)}
+                                                                                </span>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                            {settlement.issued_at ? formatDate(settlement.issued_at) : '-'}
+                                                                        </td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                            {settlement.paid_at ? formatDate(settlement.paid_at) : '-'}
+                                                                        </td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                                            <div className="flex items-center space-x-2">
+                                                                                <button
+                                                                                    onClick={() => toggleRow(settlement.id)}
+                                                                                    className="text-blue-600 hover:text-blue-900"
+                                                                                    title="Pokaż/ukryj składniki"
+                                                                                >
+                                                                                    <EyeIcon className="w-4 h-4" />
+                                                                                </button>
+                                                                {settlement.status !== 'paid' && (
+                                                                    <button
+                                                                        onClick={() => handleEditSettlement(settlement)}
+                                                                        className="text-yellow-600 hover:text-yellow-900"
+                                                                        title="Edytuj"
+                                                                    >
+                                                                        <PencilIcon className="w-4 h-4" />
+                                                                    </button>
+                                                                )}
+                                                                {settlement.status === 'paid' && (
+                                                                    <span className="text-gray-400 cursor-not-allowed" title="Nie można edytować opłaconego rozliczenia">
+                                                                        <PencilIcon className="w-4 h-4" />
+                                                                    </span>
+                                                                )}
+                                                                                {settlement.status !== 'paid' && (
+                                                                                    <button
+                                                                                        onClick={() => handleMarkAsPaid(settlement)}
+                                                                                        className="text-green-600 hover:text-green-900"
+                                                                                        title="Oznacz jako opłacone"
+                                                                                    >
+                                                                                        <CheckCircleIcon className="w-4 h-4" />
+                                                                                    </button>
+                                                                                )}
+                                                                                <button
+                                                                                    onClick={() => handleDelete(settlement)}
+                                                                                    className="text-red-600 hover:text-red-900"
+                                                                                    title="Usuń"
+                                                                                >
+                                                                                    <TrashIcon className="w-4 h-4" />
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                    {expandedRows.has(settlement.id) && (
+                                                                        <tr className="bg-gray-50">
+                                                                            <td colSpan="6" className="px-6 py-4">
+                                                                                <div className="space-y-2">
+                                                                                    <h4 className="text-sm font-medium text-gray-900">Składniki rozliczenia:</h4>
+                                                                                    {settlement.components && settlement.components.length > 0 ? (
+                                                                                        <div className="space-y-1">
+                                                                                            {settlement.components.map((component, index) => (
+                                                                                                <div key={index} className="flex justify-between items-center py-1 px-3 bg-white rounded border">
+                                                                                                    <div>
+                                                                                                        <span className="text-sm font-medium text-gray-900">
+                                                                                                            {component.name}
+                                                                                                        </span>
+                                                                                                        {component.description && (
+                                                                                                            <p className="text-xs text-gray-500">
+                                                                                                                {component.description}
+                                                                                                            </p>
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                    <div className="text-right">
+                                                                                                        <span className="text-sm font-medium text-gray-900">
+                                                                                                            {Number(component.amount).toLocaleString('pl-PL', {
+                                                                                                                minimumFractionDigits: 2,
+                                                                                                                maximumFractionDigits: 2
+                                                                                                            })} zł
+                                                                                                        </span>
+                                                                                                        <div className="flex items-center space-x-2">
+                                                                                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                                                                                                component.status === 'active' 
+                                                                                                                    ? 'bg-green-100 text-green-800' 
+                                                                                                                    : 'bg-gray-100 text-gray-800'
+                                                                                                            }`}>
+                                                                                                                {component.status === 'active' ? 'Aktywny' : 'Nieaktywny'}
+                                                                                                            </span>
+                                                                                                            <span className="text-xs text-gray-500">
+                                                                                                                {component.type === 'rent' ? 'Czynsz' : 
+                                                                                                                 component.type === 'meter' ? 'Licznik' : 'Inne'}
+                                                                                                            </span>
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <p className="text-sm text-gray-500">Brak składników</p>
+                                                                                    )}
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                    )}
+                                                                </>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -712,6 +911,28 @@ export default function Show({ rental, allTenants }) {
                 attachments={rental.attachments || []}
                 editingAttachment={editingAttachment}
                 openForm={!editingAttachment}
+            />
+
+            {/* Modale rozliczeń */}
+            <SettlementCreateModal
+                isOpen={showSettlementCreateModal}
+                onClose={closeSettlementCreateModal}
+                rental={rental}
+                meters={rental?.property?.meters || []}
+                years={Array.from({length: new Date().getFullYear() - (rental?.start_date ? new Date(rental.start_date).getFullYear() : new Date().getFullYear() - 1) + 1}, (_, i) => (rental?.start_date ? new Date(rental.start_date).getFullYear() : new Date().getFullYear() - 1) + i)}
+                months={{
+                    1: 'Styczeń', 2: 'Luty', 3: 'Marzec', 4: 'Kwiecień',
+                    5: 'Maj', 6: 'Czerwiec', 7: 'Lipiec', 8: 'Sierpień',
+                    9: 'Wrzesień', 10: 'Październik', 11: 'Listopad', 12: 'Grudzień'
+                }}
+            />
+
+            <SettlementEditModal
+                isOpen={showSettlementEditModal}
+                onClose={closeSettlementEditModal}
+                rental={rental}
+                settlement={editingSettlement}
+                meters={rental?.property?.meters || []}
             />
         </AuthenticatedLayout>
     );

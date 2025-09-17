@@ -40,3 +40,12 @@ Aplikacja webowa zbudowana na nowoczesnym stacku technologicznym, łączącym si
 - ✅ Middleware ochrony tras admin
 - ✅ Responsywny design
 - ✅ Nowoczesne komponenty UI
+- ✅ System zarządzania nieruchomościami z galerią zdjęć
+- ✅ System zarządzania właścicielami nieruchomości
+- ✅ System zarządzania najemcami i najmami
+- ✅ System rozliczeń miesięcznych z automatycznymi obliczeniami
+- ✅ System zarządzania licznikami nieruchomości
+- ✅ Zakładka finansowa z filtrami czasowymi i wykresami
+- ✅ System filtrów z przyciskami "Zastosuj filtry" i "Resetuj"
+- ✅ Wykres liniowy rozliczeń w czasie
+- ✅ Filtrowanie rozliczeń nieopłaconych z obliczeń finansowych

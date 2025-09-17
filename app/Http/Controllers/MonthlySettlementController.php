@@ -112,7 +112,7 @@ class MonthlySettlementController extends Controller
             'components' => $validated['components'],
         ]);
 
-        return redirect()->route('rentals.monthly-settlements.index', $rental)
+        return redirect()->route('rentals.show', $rental)->with('tab', 'settlements')
             ->with('success', 'Rozliczenie miesięczne zostało utworzone pomyślnie.');
     }
 
@@ -226,7 +226,7 @@ class MonthlySettlementController extends Controller
             'components' => $validated['components'],
         ]);
 
-        return redirect()->route('rentals.monthly-settlements.index', $rental)
+        return redirect()->route('rentals.show', $rental)->with('tab', 'settlements')
             ->with('success', 'Rozliczenie miesięczne zostało zaktualizowane pomyślnie.');
     }
 
@@ -242,7 +242,7 @@ class MonthlySettlementController extends Controller
 
         $monthlySettlement->delete();
 
-        return redirect()->route('rentals.monthly-settlements.index', $rental)
+        return redirect()->route('rentals.show', $rental)->with('tab', 'settlements')
             ->with('success', 'Rozliczenie miesięczne zostało usunięte pomyślnie.');
     }
 
@@ -258,7 +258,8 @@ class MonthlySettlementController extends Controller
 
         $monthlySettlement->markAsPaid();
 
-        return back()->with('success', 'Rozliczenie zostało oznaczone jako opłacone.');
+        return redirect()->route('rentals.show', $rental)->with('tab', 'settlements')
+            ->with('success', 'Rozliczenie zostało oznaczone jako opłacone.');
     }
 
     /**

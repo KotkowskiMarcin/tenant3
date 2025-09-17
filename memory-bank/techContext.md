@@ -44,20 +44,25 @@
 app/
 ├── Http/Controllers/     # Kontrolery
 │   ├── Auth/            # Kontrolery autentykacji
-│   └── UserController.php # Zarządzanie użytkownikami
+│   ├── UserController.php # Zarządzanie użytkownikami
+│   ├── RentalController.php # Zarządzanie najmami + endpoint filtrów
+│   └── MonthlySettlementController.php # Rozliczenia miesięczne
 ├── Http/Middleware/     # Middleware
 │   └── AdminMiddleware.php # Ochrona tras admin
 ├── Models/              # Modele Eloquent
-│   └── User.php         # Model użytkownika z rolami
+│   ├── User.php         # Model użytkownika z rolami
+│   ├── Rental.php       # Model najmów
+│   └── MonthlySettlement.php # Model rozliczeń miesięcznych
 └── Providers/           # Service Providers
 
 routes/
-├── web.php             # Trasy web + zarządzanie użytkownikami
+├── web.php             # Trasy web + zarządzanie użytkownikami + endpoint filtrów finansowych
 └── auth.php            # Trasy autentykacji
 
 database/
 ├── migrations/         # Migracje bazy danych
-│   └── add_role_to_users_table.php
+│   ├── add_role_to_users_table.php
+│   └── create_monthly_settlements_table.php
 ├── seeders/           # Seedery
 │   └── AdminUserSeeder.php
 └── database.sqlite    # Baza SQLite
@@ -67,6 +72,8 @@ database/
 ```
 resources/js/
 ├── Components/         # Komponenty UI
+│   ├── FinancialTab.jsx # Zakładka finansowa z filtrami
+│   └── Settlements/    # Komponenty rozliczeń
 ├── Layouts/           # Layouty aplikacji
 ├── Pages/             # Komponenty stron
 │   ├── Auth/          # Strony autentykacji
